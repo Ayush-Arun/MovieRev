@@ -8,13 +8,11 @@ const MovieDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
     const [movie, setMovie] = useState(null);
-    const [cast, setCast] = useState([]);
     const [reviews, setReviews] = useState([]);
     const [reviewForm, setReviewForm] = useState({ rating: 5, body: '', title: '' });
 
     useEffect(() => {
         api.get(`/movies/${id}`).then(res => setMovie(res.data)).catch(() => {});
-        api.get(`/movies/${id}/cast`).then(res => setCast(res.data)).catch(() => {});
         api.get(`/movies/${id}/reviews`).then(res => setReviews(res.data)).catch(() => {});
     }, [id]);
 

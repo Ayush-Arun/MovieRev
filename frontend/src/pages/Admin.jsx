@@ -15,7 +15,7 @@ const Admin = () => {
         try {
             const res = await api.post(`/admin/sync/${endpoint}`);
             setStatus(res.data);
-        } catch (e) {
+        } catch {
             setStatus('Error during sync');
         }
     };
