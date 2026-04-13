@@ -1,13 +1,11 @@
 package com.cinevault.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "watchlist")
-@Data
 public class Watchlist {
 
     @Id
@@ -30,4 +28,64 @@ public class Watchlist {
 
     @Column(name = "is_watched")
     private Boolean isWatched = false;
+
+    public Watchlist() {}
+
+    public Watchlist(Long id, User user, UUID sessionId, Movie movie, LocalDateTime addedAt, Boolean isWatched) {
+        this.id = id;
+        this.user = user;
+        this.sessionId = sessionId;
+        this.movie = movie;
+        this.addedAt = addedAt;
+        this.isWatched = isWatched;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public Movie getMovie() {
+        return movie;
+    }
+
+    public void setMovie(Movie movie) {
+        this.movie = movie;
+    }
+
+    public LocalDateTime getAddedAt() {
+        return addedAt;
+    }
+
+    public void setAddedAt(LocalDateTime addedAt) {
+        this.addedAt = addedAt;
+    }
+
+    public Boolean getIsWatched() {
+        return isWatched;
+    }
+
+    public void setIsWatched(Boolean isWatched) {
+        this.isWatched = isWatched;
+    }
+
 }

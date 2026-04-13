@@ -9,9 +9,13 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Map;
 
+import java.util.Optional;
+
 @Repository
 public interface MovieRepository extends JpaRepository<Movie, Long> {
-    @Query(value = "SELECT * FROM movies WHERE search_vector @@ plainto_tsquery('english', :query)", nativeQuery = true)
+    Optional<Movie> findByTmdbId(Integer tmdbId);
+
+    @Query(value = "SELECT * FROM movies WHERE title ILIKE CONCAT('%', :query, '%') OR synopsis ILIKE CONCAT('%', :query, '%')", nativeQuery = true)
     List<Movie> searchMovies(@Param("query") String query);
 
     @Query(value = "SELECT * FROM get_movie_recommendations(:movieId)", nativeQuery = true)

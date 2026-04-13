@@ -4,10 +4,29 @@
 
 @layer base {
   body {
-    @apply bg-cine-darker text-slate-200 antialiased font-sans;
+    @apply bg-background text-on-background font-body overflow-x-hidden selection:bg-secondary selection:text-on-secondary;
   }
 }
 
-.glass-panel {
-  @apply bg-cine-panel/50 backdrop-blur-md border border-slate-700/50 rounded-xl;
+.grain-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.glitch-hover:hover {
+  text-shadow: 1px 0 #ff706f, -1px 0 #00ffff;
+}
+
+.poster-glow:hover {
+  box-shadow: 0 0 30px rgba(255, 112, 111, 0.15);
 }

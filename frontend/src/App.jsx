@@ -23,11 +23,13 @@ const AppContent = () => {
     }, [location]);
 
     return (
-        <div className="min-h-screen bg-cine-darker font-sans text-slate-200 selection:bg-cine-gold selection:text-cine-darker">
+        <div className="bg-background text-on-background selection:bg-secondary selection:text-on-secondary relative overflow-hidden min-h-screen">
+            <div className="grain-overlay"></div>
+            
             <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
             <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
             
-            <main className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
+            <main className="pt-24 md:pl-64 pb-24 md:pb-12 min-h-screen relative z-10 transition-all duration-300">
                 <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/browse" element={<Browse />} />

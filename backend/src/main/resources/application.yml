@@ -1,14 +1,18 @@
 spring:
   application:
-    name: "CineVault"
+    name: CineVault
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/cinevault}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://localhost:5432/cinevault
+    username: postgres
+    password: Ninja#@3.14
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
-      # We rely on PostgreSQL schema.sql, so we disable automatic schema generation
       ddl-auto: none
     show-sql: false
     properties:
@@ -18,14 +22,15 @@ spring:
 
 app:
   jwt:
-    access-secret: ${JWT_ACCESS_SECRET:very_long_secret_for_access_tokens_which_must_be_256_bits}
-    refresh-secret: ${JWT_REFRESH_SECRET:another_very_long_secret_for_refresh_tokens_which_must_be_256_bits}
-    access-expiration-ms: 900000 # 15 minutes
-    refresh-expiration-ms: 604800000 # 7 days
+    access-secret: "Zl9a7Qp2w3XkGk6jQ8F0Fh5QbFzU9o4t3a6vZqP1WmE="
+    refresh-secret: "Yp4rT2n9e8LqV6sJ3uXc5B7kM0hD1fWzR8tN4aC9sEo="
+    access-expiration-ms: 900000
+    refresh-expiration-ms: 604800000
+
   tmdb:
-    api-key: ${TMDB_API_KEY:mock_key}
-    base-url: ${TMDB_BASE_URL:https://api.themoviedb.org/3}
-    image-base: ${TMDB_IMAGE_BASE:https://image.tmdb.org/t/p/w500}
+    api-key: 3b5b8da61073fa7055ba05490f27cc60
+    base-url: https://api.themoviedb.org/3
+    image-base: https://image.tmdb.org/t/p/w500
 
 server:
-  port: ${PORT:5000}
+  port: 5000
