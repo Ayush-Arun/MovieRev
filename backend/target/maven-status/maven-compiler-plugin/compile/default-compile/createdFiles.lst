@@ -1,0 +1,8 @@
+com\cinevault\controller\ShowtimeController.class
+com\cinevault\entity\User.class
+com\cinevault\entity\Theatre.class
+com\cinevault\security\CustomUserDetailsService.class
+com\cinevault\entity\Movie.class
+com\cinevault\repository\UserRepository.class
+com\cinevault\entity\Language.class
+com\cinevault\entity\Showtime.class

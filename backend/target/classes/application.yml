@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: "CineVault"
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/cinevault}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      # We rely on PostgreSQL schema.sql, so we disable automatic schema generation
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+app:
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET:very_long_secret_for_access_tokens_which_must_be_256_bits}
+    refresh-secret: ${JWT_REFRESH_SECRET:another_very_long_secret_for_refresh_tokens_which_must_be_256_bits}
+    access-expiration-ms: 900000 # 15 minutes
+    refresh-expiration-ms: 604800000 # 7 days
+  tmdb:
+    api-key: ${TMDB_API_KEY:mock_key}
+    base-url: ${TMDB_BASE_URL:https://api.themoviedb.org/3}
+    image-base: ${TMDB_IMAGE_BASE:https://image.tmdb.org/t/p/w500}
+
+server:
+  port: ${PORT:5000}
