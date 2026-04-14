@@ -64,6 +64,32 @@ const MovieDetail = () => {
                         <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">schedule</span> {movie.runtime_minutes ? `${movie.runtime_minutes} MIN` : 'UNKNOWN_DURATION'}</span>
                     </div>
 
+                    <div className="mt-6 flex">
+                        <button 
+                            onClick={async () => {
+                                try {
+                                    let sid = localStorage.getItem('cv_session_id');
+                                    if (!sid) {
+                                        sid = crypto.randomUUID();
+                                        localStorage.setItem('cv_session_id', sid);
+                                    }
+                                    await api.post('/watchlist', {
+                                        movieId: movie.id,
+                                        userId: user?.id,
+                                        sessionId: sid
+                                    });
+                                    alert('Successfully added to your Archive.');
+                                } catch (e) {
+                                    alert('Failed to add to Archive.');
+                                }
+                            }}
+                            className="flex items-center gap-2 bg-transparent border border-secondary text-secondary hover:bg-secondary hover:text-on-secondary px-6 py-3 font-headline uppercase tracking-widest text-xs transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-sm">bookmark_add</span>
+                            ADD_TO_ARCHIVE
+                        </button>
+                    </div>
+
                     <div className="mt-8 pt-8">
                         <h3 className="font-headline uppercase tracking-[0.2em] text-xs text-primary mb-4">[SYNOPSIS_DECRYPTED]</h3>
                         <p className="text-white/80 font-body text-lg leading-relaxed max-w-2xl">{movie.synopsis || "No data recovered."}</p>

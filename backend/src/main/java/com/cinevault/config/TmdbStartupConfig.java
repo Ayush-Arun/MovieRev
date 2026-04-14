@@ -14,6 +14,7 @@ public class TmdbStartupConfig {
             System.out.println("======================================================");
             System.out.println("INITIALIZING AUTOMATED TMDB SYNC ON STARTUP...");
             try {
+                tmdbSyncService.cleanAdultMovies();
                 tmdbSyncService.syncHollywoodMovies();
                 tmdbSyncService.syncBollywoodMovies();
                 tmdbSyncService.syncSouthIndianMovies();

@@ -17,6 +17,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class TmdbSyncService {
@@ -37,6 +40,37 @@ public class TmdbSyncService {
     private JdbcTemplate jdbcTemplate;
 
     private final RestTemplate restTemplate = new RestTemplate();
+
+    private static final Map<Integer, String> GENRE_MAP = new HashMap<>();
+    static {
+        GENRE_MAP.put(28, "Action");
+        GENRE_MAP.put(12, "Adventure");
+        GENRE_MAP.put(16, "Animation");
+        GENRE_MAP.put(35, "Comedy");
+        GENRE_MAP.put(80, "Crime");
+        GENRE_MAP.put(99, "Documentary");
+        GENRE_MAP.put(18, "Drama");
+        GENRE_MAP.put(10751, "Family");
+        GENRE_MAP.put(14, "Fantasy");
+        GENRE_MAP.put(36, "History");
+        GENRE_MAP.put(27, "Horror");
+        GENRE_MAP.put(10402, "Music");
+        GENRE_MAP.put(9648, "Mystery");
+        GENRE_MAP.put(10749, "Romance");
+        GENRE_MAP.put(878, "Science Fiction");
+        GENRE_MAP.put(10770, "TV Movie");
+        GENRE_MAP.put(53, "Thriller");
+        GENRE_MAP.put(10752, "War");
+        GENRE_MAP.put(37, "Western");
+    }
+
+    private String mapGenres(List<Integer> genreIds) {
+        if (genreIds == null || genreIds.isEmpty()) return null;
+        return genreIds.stream()
+            .map(id -> GENRE_MAP.getOrDefault(id, "Unknown"))
+            .filter(g -> !"Unknown".equals(g))
+            .collect(Collectors.joining(", "));
+    }
 
     public void syncHollywoodMovies() {
         String url = baseUrl + "/discover/movie?api_key=" + apiKey + "&with_original_language=en&sort_by=popularity.desc&include_adult=false&vote_count.gte=1000";
@@ -92,6 +126,13 @@ public class TmdbSyncService {
             
             // Save or Update Movie
             Movie movie = movieRepository.findByTmdbId(tmdbId).orElse(new Movie());
+            if (movieDto.isAdult()) {
+                System.out.println("Skipping/removing adult movie: " + movieDto.getTitle());
+                if (movie.getId() != null) {
+                    movieRepository.delete(movie);
+                }
+                return;
+            }
             movie.setTmdbId(movieDto.getId());
             movie.setTitle(movieDto.getTitle());
             movie.setOriginalLanguage(movieDto.getOriginalLanguage());
@@ -104,6 +145,9 @@ public class TmdbSyncService {
             movie.setSynopsis(movieDto.getOverview());
             if (movieDto.getPosterPath() != null) movie.setPosterUrl(imageBaseUrl + movieDto.getPosterPath());
             movie.setAggregateRating(movieDto.getVoteAverage());
+            if (movieDto.getGenreIds() != null) {
+                movie.setGenres(mapGenres(movieDto.getGenreIds()));
+            }
             if (movieDto.getRuntime() != null && movieDto.getRuntime() > 0) {
                 movie.setRuntimeMinutes(movieDto.getRuntime());
             } else {
@@ -174,5 +218,45 @@ public class TmdbSyncService {
         String img = (profilePath != null) ? imageBaseUrl + profilePath : null;
         String insertSql = "INSERT INTO people (tmdb_id, name, profile_photo_url) VALUES (?, ?, ?) RETURNING id";
         return jdbcTemplate.queryForObject(insertSql, Long.class, tmdbId, name, img);
+    }
+
+    public void searchAndIngest(String query) {
+        if (apiKey == null || apiKey.isEmpty()) return;
+        try {
+            String url = baseUrl + "/search/movie?api_key=" + apiKey + "&query=" + query + "&include_adult=false";
+            ResponseEntity<TmdbResponse<TmdbMovieDto>> response = restTemplate.exchange(
+                url, HttpMethod.GET, null, new ParameterizedTypeReference<TmdbResponse<TmdbMovieDto>>() {}
+            );
+            if (response.getBody() != null && response.getBody().getResults() != null) {
+                List<TmdbMovieDto> results = response.getBody().getResults();
+                for (int i = 0; i < Math.min(results.size(), 5); i++) {
+                    syncMovieDetails(results.get(i).getId());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to search and ingest: " + e.getMessage());
+        }
+    }
+
+    public void cleanAdultMovies() {
+        System.out.println("Starting adult movies cleanup...");
+        List<Movie> allMovies = movieRepository.findAll();
+        for (Movie m : allMovies) {
+            if (m.getTmdbId() == null) continue;
+            try {
+                String detailsUrl = baseUrl + "/movie/" + m.getTmdbId() + "?api_key=" + apiKey;
+                ResponseEntity<TmdbMovieDto> movieResponse = restTemplate.getForEntity(detailsUrl, TmdbMovieDto.class);
+                TmdbMovieDto movieDto = movieResponse.getBody();
+                if (movieDto != null && movieDto.isAdult()) {
+                    System.out.println("Deleting adult movie: " + m.getTitle());
+                    movieRepository.delete(m);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to check movie " + m.getTitle() + ": " + e.getMessage());
+            }
+            // Sleep slightly to avoid hitting rate limits
+            try { Thread.sleep(100); } catch (InterruptedException ignore) {}
+        }
+        System.out.println("Adult movies cleanup finished.");
     }
 }

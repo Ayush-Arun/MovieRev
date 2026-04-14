@@ -22,6 +22,9 @@ public class TmdbMovieDto {
     @JsonProperty("vote_average")
     private double voteAverage;
     
+    @JsonProperty("adult")
+    private boolean adult;
+
     @JsonProperty("original_language")
     private String originalLanguage;
     
@@ -48,4 +51,6 @@ public class TmdbMovieDto {
     public void setOriginalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; }
     public List<Integer> getGenreIds() { return genreIds; }
     public void setGenreIds(List<Integer> genreIds) { this.genreIds = genreIds; }
+    public boolean isAdult() { return adult; }
+    public void setAdult(boolean adult) { this.adult = adult; }
 }

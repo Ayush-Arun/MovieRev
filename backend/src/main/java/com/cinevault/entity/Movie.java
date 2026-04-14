@@ -25,6 +25,9 @@ public class Movie {
 
     private String synopsis;
 
+    @Column(name = "genres")
+    private String genres;
+
     @Column(name = "poster_url")
     private String posterUrl;
 
@@ -121,6 +124,14 @@ public class Movie {
 
     public void setSynopsis(String synopsis) {
         this.synopsis = synopsis;
+    }
+
+    public String getGenres() {
+        return genres;
+    }
+
+    public void setGenres(String genres) {
+        this.genres = genres;
     }
 
     public String getPosterUrl() {

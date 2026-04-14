@@ -2,6 +2,7 @@ package com.cinevault.controller;
 
 import com.cinevault.entity.Movie;
 import com.cinevault.repository.MovieRepository;
+import com.cinevault.service.TmdbSyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,9 @@ public class MovieController {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TmdbSyncService tmdbSyncService;
+
     @GetMapping
     public ResponseEntity<List<Movie>> getAllMovies() {
         return ResponseEntity.ok(movieRepository.findAll());
@@ -34,7 +38,26 @@ public class MovieController {
 
     @GetMapping("/search")
     public ResponseEntity<List<Movie>> searchMovies(@RequestParam String q) {
+        tmdbSyncService.searchAndIngest(q);
         return ResponseEntity.ok(movieRepository.searchMovies(q));
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<List<Movie>> getFeaturedMovies() {
+        return ResponseEntity.ok(movieRepository.findNewlyFeatured());
+    }
+
+    @GetMapping("/decade")
+    public ResponseEntity<List<Movie>> getDecadeMovies() {
+        return ResponseEntity.ok(movieRepository.findBestOfDecade());
+    }
+
+    @GetMapping("/browse")
+    public ResponseEntity<List<Movie>> browseMovies(@RequestParam(required = false) String genre) {
+        if (genre != null && !genre.isEmpty()) {
+            return ResponseEntity.ok(movieRepository.findByGenre(genre));
+        }
+        return ResponseEntity.ok(movieRepository.findAll());
     }
 
     @GetMapping("/{id}/recommendations")

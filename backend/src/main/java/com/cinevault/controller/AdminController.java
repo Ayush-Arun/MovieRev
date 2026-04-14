@@ -39,6 +39,12 @@ public class AdminController {
         return ResponseEntity.ok("Movie sync triggered.");
     }
 
+    @PostMapping("/clean-adult-movies")
+    public ResponseEntity<?> cleanAdultMovies() {
+        new Thread(() -> tmdbSyncService.cleanAdultMovies()).start();
+        return ResponseEntity.ok("Adult movies cleanup started in background.");
+    }
+
     @GetMapping("/users")
     public ResponseEntity<?> getUsers() {
         List<User> users = userRepository.findAll();

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { Link } from 'react-router-dom';
+import Carousel from '../components/Carousel';
 
 const GlitchMovieCard = ({ m }) => (
     <div className="group bg-surface-container-low poster-glow transition-all rounded-sm overflow-hidden select-none">
@@ -29,14 +30,15 @@ const GlitchMovieCard = ({ m }) => (
 );
 
 export const Home = () => {
-    const [movies, setMovies] = useState([]);
+    const [featuredMovies, setFeaturedMovies] = useState([]);
+    const [decadeMovies, setDecadeMovies] = useState([]);
 
     useEffect(() => {
-        api.get('/movies').then(res => setMovies(res.data.slice(0, 10))).catch(() => {});
+        api.get('/movies/featured').then(res => setFeaturedMovies(res.data)).catch(() => {});
+        api.get('/movies/decade').then(res => setDecadeMovies(res.data)).catch(() => {});
     }, []);
 
-    const featured = movies[0];
-    const latest = movies.slice(1, 5);
+    const heroFeatured = featuredMovies[0];
 
     return (
         <div className="px-2 md:px-6 py-8 max-w-7xl mx-auto space-y-16">
@@ -53,33 +55,26 @@ export const Home = () => {
                 </div>
             </div>
 
-            {featured && (
+            {heroFeatured && (
                 <div className="lg:col-span-4 bg-primary-container p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 group cursor-pointer overflow-hidden relative shadow-[0_0_50px_rgba(202,253,0,0.1)] hover:shadow-[0_0_80px_rgba(202,253,0,0.2)] transition-shadow">
                     <div className="flex-1 z-10">
                         <div className="font-headline uppercase tracking-[0.5em] text-on-primary-container text-[10px] mb-4 font-black">CRITICAL_RECOMMENDATION // V1.0</div>
-                        <h3 className="text-on-primary-container text-5xl md:text-6xl font-black uppercase tracking-tighter leading-tight font-headline">{featured.title}</h3>
-                        <p className="text-on-primary-container/80 max-w-xl mt-6 font-medium italic font-body">{featured.description || "A masterful documentation of reality distortion."}</p>
-                        <Link to={`/movie/${featured.id}`} className="inline-block mt-8 border-2 border-on-primary-container px-8 py-3 font-headline font-bold uppercase tracking-widest text-xs hover:bg-on-primary-container hover:text-primary-container transition-all">ACCESS_DATA_RECORDS</Link>
+                        <h3 className="text-on-primary-container text-5xl md:text-6xl font-black uppercase tracking-tighter leading-tight font-headline">{heroFeatured.title}</h3>
+                        <p className="text-on-primary-container/80 max-w-xl mt-6 font-medium italic font-body">{heroFeatured.synopsis || heroFeatured.description || "A masterful documentation of reality distortion."}</p>
+                        <Link to={`/movie/${heroFeatured.id}`} className="inline-block mt-8 border-2 border-on-primary-container px-8 py-3 font-headline font-bold uppercase tracking-widest text-xs hover:bg-on-primary-container hover:text-primary-container transition-all">ACCESS_DATA_RECORDS</Link>
                     </div>
                     <div className="w-full md:w-1/3 aspect-video md:aspect-[4/5] bg-black overflow-hidden relative z-10 shadow-2xl skew-x-[-2deg] group-hover:skew-x-0 transition-transform">
-                        <img className="w-full h-full object-cover grayscale contrast-150" src={featured.poster_url || "https://images.unsplash.com/photo-1549488344-c6a617d3dcb1"} />
+                        <img className="w-full h-full object-cover grayscale contrast-150 group-hover:grayscale-0 group-hover:contrast-100 transition-all duration-700" src={heroFeatured.poster_url || "https://images.unsplash.com/photo-1549488344-c6a617d3dcb1"} />
                         <div className="absolute inset-0 bg-primary-container/10 mix-blend-overlay"></div>
                     </div>
                     <div className="absolute right-0 top-0 text-[8rem] md:text-[12rem] font-black text-on-primary-container/5 leading-none translate-x-12 translate-y-[-2rem] pointer-events-none uppercase font-headline">ANOMALY</div>
                 </div>
             )}
 
-            {/* Latest Grid */}
-            <section>
-                <div className="flex items-end justify-between border-b-2 border-primary mb-8 pb-2">
-                    <h2 className="text-2xl md:text-3xl font-black text-on-surface uppercase tracking-tight font-headline">LATEST_ANOMALIES</h2>
-                    <span className="font-headline uppercase tracking-widest text-[8px] text-white/40">SORTED: GL_DL_RM</span>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {latest.map(m => <GlitchMovieCard key={m.id} m={m} />)}
-                    {movies.length === 0 && Array(4).fill(0).map((_, i) => <div key={i} className="aspect-[2/3] bg-surface-container-low animate-pulse border border-white/5" />)}
-                </div>
+            {/* Moving Carousels */}
+            <section className="space-y-4">
+                <Carousel title="NEWLY FEATURED_ANOMALIES" movies={featuredMovies} />
+                <Carousel title="BEST_OF_THE_DECADE" movies={decadeMovies} />
             </section>
         </div>
     );
@@ -87,14 +82,19 @@ export const Home = () => {
 
 export const Browse = () => {
     const [movies, setMovies] = useState([]);
-    const [search, setSearch] = useState(() => {
-        return new URLSearchParams(window.location.search).get('search') || '';
-    });
+    const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('search') || '');
+    const [genre, setGenre] = useState(() => new URLSearchParams(window.location.search).get('genre') || '');
 
     useEffect(() => {
-        const fetchUrl = search ? `/movies/search?q=${search}` : '/movies';
+        let fetchUrl = '/movies/browse';
+        if (search) fetchUrl = `/movies/search?q=${search}`;
+        if (genre && !search) fetchUrl = `/movies/browse?genre=${genre}`;
+        if (genre && search) fetchUrl = `/movies/search?q=${search}&genre=${genre}`;
+
         api.get(fetchUrl).then(res => setMovies(res.data)).catch(() => {});
-    }, [search]);
+    }, [search, genre]);
+
+    const ALL_GENRES = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "TV Movie", "Thriller", "War", "Western"];
 
     return (
         <div className="px-2 md:px-6 py-8 max-w-7xl mx-auto space-y-12">
@@ -108,15 +108,28 @@ export const Browse = () => {
                     <p className="text-white/40 font-headline uppercase tracking-[0.1em] text-xs">CURATED COLLECTIONS OF VISUAL DISTORTION. {movies.length} ENTRIES FOUND DETECTED.</p>
                 </div>
                 
-                <div className="flex bg-surface-container-highest px-4 py-2 gap-3 border-b-2 border-primary w-full md:w-auto mt-4 md:mt-0">
-                    <span className="material-symbols-outlined text-primary text-sm">search</span>
-                    <input 
-                        type="text" 
-                        placeholder="SEARCH_INDEX..." 
-                        className="bg-transparent border-none focus:ring-0 text-xs font-headline uppercase tracking-widest text-on-surface p-0 w-full md:w-64 focus:outline-none"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
+                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto mt-4 md:mt-0">
+                    <select 
+                        value={genre} 
+                        onChange={(e) => setGenre(e.target.value)}
+                        className="bg-surface-container border border-white/10 text-white font-headline text-xs p-3 uppercase focus:outline-none focus:border-primary"
+                    >
+                        <option value="">ALL_GENRES</option>
+                        {ALL_GENRES.map(g => (
+                            <option key={g} value={g}>{g}</option>
+                        ))}
+                    </select>
+
+                    <div className="flex bg-surface-container-highest px-4 py-3 gap-3 border-b-2 border-primary">
+                        <span className="material-symbols-outlined text-primary text-sm">search</span>
+                        <input 
+                            type="text" 
+                            placeholder="SEARCH_INDEX..." 
+                            className="bg-transparent border-none focus:ring-0 text-xs font-headline uppercase tracking-widest text-on-surface p-0 w-full md:w-64 focus:outline-none"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                     </div>
                  </div>
             </div>
             

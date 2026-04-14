@@ -33,23 +33,23 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         const sessionId = localStorage.getItem('cv_session_id');
-        const res = await api.post('/auth/login', { email, password, sessionId });
-        localStorage.setItem('access_token', res.data.accessToken);
-        localStorage.setItem('refresh_token', res.data.refreshToken);
+        const res = await api.post('/auth/login', { email, password, session_id: sessionId });
+        localStorage.setItem('access_token', res.data.access_token);
+        localStorage.setItem('refresh_token', res.data.refresh_token);
         setUser(res.data.user);
     };
 
     const register = async (email, username, password, displayName) => {
         const sessionId = localStorage.getItem('cv_session_id');
-        const res = await api.post('/auth/register', { email, username, password, displayName, sessionId });
-        localStorage.setItem('access_token', res.data.accessToken);
-        localStorage.setItem('refresh_token', res.data.refreshToken);
+        const res = await api.post('/auth/register', { email, username, password, display_name: displayName, session_id: sessionId });
+        localStorage.setItem('access_token', res.data.access_token);
+        localStorage.setItem('refresh_token', res.data.refresh_token);
         setUser(res.data.user);
     };
 
     const logout = async () => {
         try {
-            await api.post('/auth/logout', { refreshToken: localStorage.getItem('refresh_token') });
+            await api.post('/auth/logout', { refresh_token: localStorage.getItem('refresh_token') });
         } catch(e) {}
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
