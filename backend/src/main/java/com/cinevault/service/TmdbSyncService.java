@@ -1,10 +1,8 @@
 package com.cinevault.service;
 
-import com.cinevault.dto.tmdb.TmdbCreditsDto;
-import com.cinevault.dto.tmdb.TmdbMovieDto;
-import com.cinevault.dto.tmdb.TmdbResponse;
-import com.cinevault.entity.Movie;
-import com.cinevault.repository.MovieRepository;
+import com.cinevault.dto.tmdb.*;
+import com.cinevault.entity.*;
+import com.cinevault.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -16,12 +14,18 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class TmdbSyncService {
 
     @Value("${app.tmdb.api-key}")
@@ -35,42 +39,25 @@ public class TmdbSyncService {
 
     @Autowired
     private MovieRepository movieRepository;
+
+    @Autowired
+    private GenreRepository genreRepository;
     
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    @Autowired
+    private OttPlatformRepository ottPlatformRepository;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    private static final Map<Integer, String> GENRE_MAP = new HashMap<>();
-    static {
-        GENRE_MAP.put(28, "Action");
-        GENRE_MAP.put(12, "Adventure");
-        GENRE_MAP.put(16, "Animation");
-        GENRE_MAP.put(35, "Comedy");
-        GENRE_MAP.put(80, "Crime");
-        GENRE_MAP.put(99, "Documentary");
-        GENRE_MAP.put(18, "Drama");
-        GENRE_MAP.put(10751, "Family");
-        GENRE_MAP.put(14, "Fantasy");
-        GENRE_MAP.put(36, "History");
-        GENRE_MAP.put(27, "Horror");
-        GENRE_MAP.put(10402, "Music");
-        GENRE_MAP.put(9648, "Mystery");
-        GENRE_MAP.put(10749, "Romance");
-        GENRE_MAP.put(878, "Science Fiction");
-        GENRE_MAP.put(10770, "TV Movie");
-        GENRE_MAP.put(53, "Thriller");
-        GENRE_MAP.put(10752, "War");
-        GENRE_MAP.put(37, "Western");
-    }
+    private final List<String> contentBlacklist = Arrays.asList(
+        "sex", "nude", "nudity", "porn", "erotica", "adult movie", "gay porn", "lesbian porn", "xxx", "uwakizuma"
+    );
 
-    private String mapGenres(List<Integer> genreIds) {
-        if (genreIds == null || genreIds.isEmpty()) return null;
-        return genreIds.stream()
-            .map(id -> GENRE_MAP.getOrDefault(id, "Unknown"))
-            .filter(g -> !"Unknown".equals(g))
-            .collect(Collectors.joining(", "));
-    }
 
     public void syncHollywoodMovies() {
         String url = baseUrl + "/discover/movie?api_key=" + apiKey + "&with_original_language=en&sort_by=popularity.desc&include_adult=false&vote_count.gte=1000";
@@ -88,6 +75,21 @@ public class TmdbSyncService {
             String url = baseUrl + "/discover/movie?api_key=" + apiKey + "&with_original_language=" + lang + "&region=IN&sort_by=popularity.desc&include_adult=false&vote_count.gte=50";
             fetchAndSaveMovies(url);
         }
+    }
+
+    public void syncDecadeMovies() {
+        int currentYear = LocalDate.now().getYear();
+        for (int year = currentYear - 10; year < currentYear; year++) {
+            System.out.println("Syncing top movies for year: " + year);
+            String url = baseUrl + "/discover/movie?api_key=" + apiKey + "&primary_release_year=" + year + "&sort_by=vote_average.desc&vote_count.gte=500&include_adult=false";
+            fetchAndSaveMovies(url);
+        }
+    }
+
+    public void syncNowPlayingMovies() {
+        System.out.println("Syncing NOW PLAYING movies from TMDB...");
+        String url = baseUrl + "/movie/now_playing?api_key=" + apiKey + "&region=IN&language=en-US";
+        fetchAndSaveMovies(url);
     }
 
     public void fetchAndSaveMovies(String url) {
@@ -119,20 +121,25 @@ public class TmdbSyncService {
         String reviewsUrl = baseUrl + "/movie/" + tmdbId + "/reviews?api_key=" + apiKey;
         
         try {
-            // Fetch Movie Details
             ResponseEntity<TmdbMovieDto> movieResponse = restTemplate.getForEntity(detailsUrl, TmdbMovieDto.class);
             TmdbMovieDto movieDto = movieResponse.getBody();
             if (movieDto == null) return;
+
+            if (movieDto.isAdult() || isContentInappropriate(movieDto)) {
+                System.out.println("Skipping/removing inappropriate movie: " + movieDto.getTitle());
+                movieRepository.findByTmdbId(tmdbId).ifPresent(m -> movieRepository.delete(m));
+                return;
+            }
+
+            // Enforce: only save movies with a real poster image
+            if (movieDto.getPosterPath() == null || movieDto.getPosterPath().isEmpty()) {
+                System.out.println("Skipping movie without poster: " + movieDto.getTitle());
+                movieRepository.findByTmdbId(tmdbId).ifPresent(m -> movieRepository.delete(m));
+                return;
+            }
             
             // Save or Update Movie
             Movie movie = movieRepository.findByTmdbId(tmdbId).orElse(new Movie());
-            if (movieDto.isAdult()) {
-                System.out.println("Skipping/removing adult movie: " + movieDto.getTitle());
-                if (movie.getId() != null) {
-                    movieRepository.delete(movie);
-                }
-                return;
-            }
             movie.setTmdbId(movieDto.getId());
             movie.setTitle(movieDto.getTitle());
             movie.setOriginalLanguage(movieDto.getOriginalLanguage());
@@ -145,8 +152,17 @@ public class TmdbSyncService {
             movie.setSynopsis(movieDto.getOverview());
             if (movieDto.getPosterPath() != null) movie.setPosterUrl(imageBaseUrl + movieDto.getPosterPath());
             movie.setAggregateRating(movieDto.getVoteAverage());
-            if (movieDto.getGenreIds() != null) {
-                movie.setGenres(mapGenres(movieDto.getGenreIds()));
+            
+            // Sync Age Rating
+            syncAgeRating(tmdbId, movie);
+
+            if (movieDto.getGenres() != null && !movieDto.getGenres().isEmpty()) {
+                movie.getGenres().clear();
+                for (TmdbMovieDto.Genre g : movieDto.getGenres()) {
+                    Genre genre = genreRepository.findById(g.getId())
+                        .orElseGet(() -> genreRepository.save(new Genre(g.getId(), g.getName())));
+                    movie.getGenres().add(genre);
+                }
             }
             if (movieDto.getRuntime() != null && movieDto.getRuntime() > 0) {
                 movie.setRuntimeMinutes(movieDto.getRuntime());
@@ -157,57 +173,180 @@ public class TmdbSyncService {
             Movie savedMovie = movieRepository.save(movie);
 
             // Fetch Credits
-            try {
-                ResponseEntity<TmdbCreditsDto> creditsResponse = restTemplate.getForEntity(creditsUrl, TmdbCreditsDto.class);
-                TmdbCreditsDto creditsDto = creditsResponse.getBody();
-                if (creditsDto != null) {
-                    jdbcTemplate.update("DELETE FROM movie_cast WHERE movie_id = ?", savedMovie.getId());
-                    jdbcTemplate.update("DELETE FROM movie_crew WHERE movie_id = ?", savedMovie.getId());
-                    
-                    if (creditsDto.getCast() != null) {
-                        for (int i = 0; i < Math.min(creditsDto.getCast().size(), 10); i++) {
-                            TmdbCreditsDto.Cast c = creditsDto.getCast().get(i);
-                            Long personId = upsertPerson(c.getId(), c.getName(), c.getProfilePath());
-                            jdbcTemplate.update("INSERT INTO movie_cast (movie_id, person_id, character_name, character_type) VALUES (?, ?, ?, 'Actor')",
-                                savedMovie.getId(), personId, c.getCharacter());
-                        }
-                    }
-                    
-                    if (creditsDto.getCrew() != null) {
-                        for (TmdbCreditsDto.Crew c : creditsDto.getCrew()) {
-                            if ("Director".equalsIgnoreCase(c.getJob())) {
-                                Long personId = upsertPerson(c.getId(), c.getName(), c.getProfilePath());
-                                jdbcTemplate.update("INSERT INTO movie_crew (movie_id, person_id, role_type) VALUES (?, ?, ?)",
-                                    savedMovie.getId(), personId, c.getJob());
-                            }
-                        }
-                    }
-                }
-            } catch (Exception e) {}
+            syncCredits(tmdbId, savedMovie);
 
-            // Fetch Reviews
-            try {
-                ResponseEntity<com.cinevault.dto.tmdb.TmdbReviewsDto> reviewsResponse = restTemplate.getForEntity(reviewsUrl, com.cinevault.dto.tmdb.TmdbReviewsDto.class);
-                com.cinevault.dto.tmdb.TmdbReviewsDto reviewsDto = reviewsResponse.getBody();
-                if (reviewsDto != null && reviewsDto.getResults() != null) {
-                    jdbcTemplate.update("DELETE FROM reviews WHERE movie_id = ?", savedMovie.getId());
-                    for (int i = 0; i < Math.min(reviewsDto.getResults().size(), 5); i++) {
-                        com.cinevault.dto.tmdb.TmdbReviewsDto.Review r = reviewsDto.getResults().get(i);
-                        String title = "Review by " + r.getAuthor();
-                        String content = r.getContent();
-                        if (content != null && content.length() > 1000) content = content.substring(0, 1000) + "...";
-                        
-                        jdbcTemplate.update("INSERT INTO reviews (movie_id, session_id, rating, review_title, review_body) VALUES (?, ?, ?, ?, ?)",
-                            savedMovie.getId(), java.util.UUID.randomUUID(), 8, title, content);
-                    }
-                }
-            } catch (Exception e) {}
+            // Fetch Rich metadata
+            syncTrailers(tmdbId, savedMovie);
+            syncWatchProviders(tmdbId, savedMovie);
+            syncReviews(tmdbId, savedMovie);
+
+            // Re-enforce TMDB rating as source of truth after all sub-syncs
+            savedMovie.setAggregateRating(movieDto.getVoteAverage());
+            movieRepository.save(savedMovie);
 
         } catch (Exception e) {
             System.err.println("Failed to sync movie " + tmdbId + ": " + e.getMessage());
         }
     }
+
+    private void syncCredits(Integer tmdbId, Movie movie) {
+        String url = baseUrl + "/movie/" + tmdbId + "/credits?api_key=" + apiKey;
+        try {
+            ResponseEntity<TmdbCreditsDto> response = restTemplate.getForEntity(url, TmdbCreditsDto.class);
+            TmdbCreditsDto creditsDto = response.getBody();
+            if (creditsDto != null) {
+                jdbcTemplate.update("DELETE FROM movie_cast WHERE movie_id = ?", movie.getId());
+                jdbcTemplate.update("DELETE FROM movie_crew WHERE movie_id = ?", movie.getId());
+                
+                if (creditsDto.getCast() != null) {
+                    for (int i = 0; i < Math.min(creditsDto.getCast().size(), 10); i++) {
+                        TmdbCreditsDto.Cast c = creditsDto.getCast().get(i);
+                        Long personId = upsertPerson(c.getId(), c.getName(), c.getProfilePath());
+                        jdbcTemplate.update("INSERT INTO movie_cast (movie_id, person_id, character_name, character_type) VALUES (?, ?, ?, 'Actor')",
+                            movie.getId(), personId, c.getCharacter());
+                    }
+                }
+                
+                if (creditsDto.getCrew() != null) {
+                    for (TmdbCreditsDto.Crew c : creditsDto.getCrew()) {
+                        if ("Director".equalsIgnoreCase(c.getJob())) {
+                            Long personId = upsertPerson(c.getId(), c.getName(), c.getProfilePath());
+                            jdbcTemplate.update("INSERT INTO movie_crew (movie_id, person_id, role_type) VALUES (?, ?, ?)",
+                                movie.getId(), personId, c.getJob());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {}
+    }
+
+    private void syncTrailers(Integer tmdbId, Movie movie) {
+        String url = baseUrl + "/movie/" + tmdbId + "/videos?api_key=" + apiKey;
+        try {
+            ResponseEntity<TmdbVideosDto> response = restTemplate.getForEntity(url, TmdbVideosDto.class);
+            if (response.getBody() != null && response.getBody().getResults() != null) {
+                for (TmdbVideosDto.Video v : response.getBody().getResults()) {
+                    if ("Trailer".equalsIgnoreCase(v.getType()) && "YouTube".equalsIgnoreCase(v.getSite())) {
+                        movie.setTrailerUrl("https://www.youtube.com/watch?v=" + v.getKey());
+                        movieRepository.save(movie);
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {}
+    }
+
+    private void syncWatchProviders(Integer tmdbId, Movie movie) {
+        String url = baseUrl + "/movie/" + tmdbId + "/watch/providers?api_key=" + apiKey;
+        try {
+            ResponseEntity<TmdbWatchProvidersDto> response = restTemplate.getForEntity(url, TmdbWatchProvidersDto.class);
+            if (response.getBody() != null && response.getBody().getResults() != null) {
+                TmdbWatchProvidersDto.CountryProviders india = response.getBody().getResults().get("IN");
+                if (india != null && india.getFlatrate() != null) {
+                    movie.getOttPlatforms().clear();
+                    for (TmdbWatchProvidersDto.Provider p : india.getFlatrate()) {
+                        OttPlatform platform = ottPlatformRepository.findByTmdbProviderId(p.getProviderId())
+                            .orElseGet(() -> ottPlatformRepository.save(new OttPlatform(
+                                p.getProviderId(), 
+                                p.getProviderName(), 
+                                "https://image.tmdb.org/t/p/original" + p.getLogoPath()
+                            )));
+                        movie.getOttPlatforms().add(platform);
+                    }
+                    movieRepository.save(movie);
+                }
+            }
+        } catch (Exception e) {}
+    }
+
+    private void syncAgeRating(Integer tmdbId, Movie movie) {
+        String url = baseUrl + "/movie/" + tmdbId + "/release_dates?api_key=" + apiKey;
+        try {
+            ResponseEntity<TmdbReleaseDatesDto> response = restTemplate.getForEntity(url, TmdbReleaseDatesDto.class);
+            if (response.getBody() != null && response.getBody().getResults() != null) {
+                List<TmdbReleaseDatesDto.Result> results = response.getBody().getResults();
+                
+                // Priority 1: India (IN)
+                String certificate = results.stream()
+                        .filter(r -> "IN".equalsIgnoreCase(r.getIso31661()))
+                        .flatMap(r -> r.getReleaseDates().stream())
+                        .map(r -> r.getCertification())
+                        .filter(c -> c != null && !c.isEmpty())
+                        .findFirst()
+                        .orElse(null);
+
+                // Priority 2: USA (US) fallback
+                if (certificate == null) {
+                    certificate = results.stream()
+                            .filter(r -> "US".equalsIgnoreCase(r.getIso31661()))
+                            .flatMap(r -> r.getReleaseDates().stream())
+                            .map(r -> r.getCertification())
+                            .filter(c -> c != null && !c.isEmpty())
+                            .findFirst()
+                            .orElse(null);
+                }
+
+                if (certificate != null) {
+                    movie.setAgeCertificate(certificate.trim());
+                }
+            }
+        } catch (Exception e) {}
+    }
+
+    private void syncReviews(Integer tmdbId, Movie movie) {
+        String url = baseUrl + "/movie/" + tmdbId + "/reviews?api_key=" + apiKey;
+        try {
+            ResponseEntity<TmdbReviewsDto> response = restTemplate.getForEntity(url, TmdbReviewsDto.class);
+            if (response.getBody() != null && response.getBody().getResults() != null) {
+                reviewRepository.deleteByMovie(movie);
+                List<TmdbReviewsDto.Review> tmdbReviews = response.getBody().getResults();
+                for (int i = 0; i < Math.min(tmdbReviews.size(), 5); i++) {
+                    TmdbReviewsDto.Review r = tmdbReviews.get(i);
+                    if (r.getContent() == null || r.getContent().isBlank()) continue;
+
+                    UUID syncId = UUID.nameUUIDFromBytes(("TMDB_" + movie.getTmdbId() + "_" + r.getAuthor()).getBytes());
+
+                    if (reviewRepository.findByMovieAndSessionId(movie, syncId).isPresent()) {
+                        continue;
+                    }
+
+                    // Parse real rating from author_details (TMDB gives it out of 10)
+                    int rating = 7; // neutral default if TMDB author didn't submit a score
+                    if (r.getAuthorDetails() != null && r.getAuthorDetails().getRating() != null) {
+                        double raw = r.getAuthorDetails().getRating();
+                        // TMDB returns 1-10, our schema is also 1-10
+                        rating = Math.max(1, Math.min(10, (int) Math.round(raw)));
+                    }
+
+                    // Parse real timestamp from TMDB
+                    LocalDateTime reviewDate = LocalDateTime.now();
+                    if (r.getCreatedAt() != null && !r.getCreatedAt().isEmpty()) {
+                        try {
+                            // TMDB format: 2023-11-04T13:11:39.695Z
+                            reviewDate = LocalDateTime.parse(
+                                r.getCreatedAt().replace("Z", "").substring(0, 19));
+                        } catch (Exception ignored) {}
+                    }
+
+                    Review review = new Review();
+                    review.setMovie(movie);
+                    review.setSessionId(syncId);
+                    review.setReviewTitle("Review by " + r.getAuthor());
+                    review.setReviewBody(r.getContent());
+                    review.setRating(rating);
+                    review.setCreatedAt(reviewDate);
+                    reviewRepository.save(review);
+                }
+                reviewRepository.flush();
+            }
+        } catch (Exception e) {}
+    }
     
+    private boolean isContentInappropriate(TmdbMovieDto movie) {
+        String content = (movie.getTitle() + " " + movie.getOverview()).toLowerCase();
+        return contentBlacklist.stream().anyMatch(word -> content.contains(" " + word + " ") || content.startsWith(word + " ") || content.endsWith(" " + word) || content.equals(word));
+    }
+
     private Long upsertPerson(int tmdbId, String name, String profilePath) {
         String selectSql = "SELECT id FROM people WHERE tmdb_id = ?";
         List<Long> ids = jdbcTemplate.queryForList(selectSql, Long.class, tmdbId);

@@ -14,10 +14,12 @@ public class TmdbStartupConfig {
             System.out.println("======================================================");
             System.out.println("INITIALIZING AUTOMATED TMDB SYNC ON STARTUP...");
             try {
-                tmdbSyncService.cleanAdultMovies();
+                // tmdbSyncService.cleanAdultMovies(); // Skipping slow cleanup to restore ratings faster
                 tmdbSyncService.syncHollywoodMovies();
                 tmdbSyncService.syncBollywoodMovies();
                 tmdbSyncService.syncSouthIndianMovies();
+                tmdbSyncService.syncDecadeMovies();
+                tmdbSyncService.syncNowPlayingMovies();
                 System.out.println("TMDB SYNC SUCCESSFUL! DATABASE POPULATED.");;
             } catch (Exception e) {
                 System.err.println("TMDB SYNC FAILED: " + e.getMessage());

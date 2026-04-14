@@ -10,7 +10,8 @@ import { Home, Browse } from './pages/Home';
 import MovieDetail from './pages/MovieDetail';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
-import { Watchlist, Showtimes } from './pages/Watchlist';
+import { Watchlist } from './pages/Watchlist';
+import Showtimes from './pages/Showtimes';
 
 const AppContent = () => {
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);

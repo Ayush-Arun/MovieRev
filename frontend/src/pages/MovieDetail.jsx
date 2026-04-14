@@ -3,12 +3,40 @@ import { useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
+const TrailerModal = ({ isOpen, onClose, videoUrl }) => {
+    if (!isOpen) return null;
+    
+    // Extract video ID from YouTube URL
+    const videoId = videoUrl?.split('v=')[1]?.split('&')[0];
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-10 animate-fade-in" onClick={onClose}>
+            <div className="relative w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <button 
+                    onClick={onClose}
+                    className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-primary transition-colors hover:scale-110 active:scale-95"
+                >
+                    <span className="material-symbols-outlined">close</span>
+                </button>
+                <iframe 
+                    src={embedUrl}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowFullScreen
+                ></iframe>
+            </div>
+        </div>
+    );
+};
+
 const MovieDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
     const [movie, setMovie] = useState(null);
     const [cast, setCast] = useState([]);
     const [reviews, setReviews] = useState([]);
+    const [isTrailerOpen, setIsTrailerOpen] = useState(false);
     const [reviewForm, setReviewForm] = useState({ rating: 5, body: '', title: '' });
 
     useEffect(() => {
@@ -58,41 +86,63 @@ const MovieDetail = () => {
                     
                     <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[0.9] font-headline text-on-surface">{movie.title}</h1>
                     
+                    {movie.genres && Array.isArray(movie.genres) && movie.genres.length > 0 && (
+                        <div className="flex flex-wrap gap-3 mt-6 mb-2">
+                            {movie.genres.map((g) => (
+                                <span key={g.id || g.name || g} className="text-[10px] bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 uppercase tracking-[0.2em] font-headline font-bold">
+                                    {g.name || g}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    
                     <div className="flex flex-wrap items-center gap-4 text-xs font-headline uppercase tracking-widest text-white/60 pt-4 border-t border-white/10">
-                        <span className="text-primary font-bold flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">star</span> {movie.aggregate_rating?.toFixed(1) || 'N/A'}</span>
-                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_today</span> {movie.release_date}</span>
-                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">schedule</span> {movie.runtime_minutes ? `${movie.runtime_minutes} MIN` : 'UNKNOWN_DURATION'}</span>
+                        {movie.ageCertificate && (
+                            <span className={`px-2.5 py-1 border rounded-sm font-black ${
+                                movie.ageCertificate === 'A' || movie.ageCertificate === 'R' ? 'border-red-500 text-red-500' :
+                                movie.ageCertificate === 'UA' || movie.ageCertificate === 'PG-13' ? 'border-amber-500 text-amber-500' :
+                                'border-green-500 text-green-500'
+                            }`}>
+                                {movie.ageCertificate}
+                            </span>
+                        )}
+                        <span className="text-primary font-bold flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">star</span> {(movie.aggregateRating || movie.aggregate_rating || 0).toFixed(1)}</span>
+                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_today</span> {movie.releaseDate || movie.release_date || 'N/A'}</span>
+                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">schedule</span> {(movie.runtimeMinutes || movie.runtime_minutes) ? `${movie.runtimeMinutes || movie.runtime_minutes} MIN` : 'UNKNOWN_DURATION'}</span>
                     </div>
 
-                    <div className="mt-6 flex">
-                        <button 
-                            onClick={async () => {
-                                try {
-                                    let sid = localStorage.getItem('cv_session_id');
-                                    if (!sid) {
-                                        sid = crypto.randomUUID();
-                                        localStorage.setItem('cv_session_id', sid);
-                                    }
-                                    await api.post('/watchlist', {
-                                        movieId: movie.id,
-                                        userId: user?.id,
-                                        sessionId: sid
-                                    });
-                                    alert('Successfully added to your Archive.');
-                                } catch (e) {
-                                    alert('Failed to add to Archive.');
-                                }
-                            }}
-                            className="flex items-center gap-2 bg-transparent border border-secondary text-secondary hover:bg-secondary hover:text-on-secondary px-6 py-3 font-headline uppercase tracking-widest text-xs transition-colors"
-                        >
-                            <span className="material-symbols-outlined text-sm">bookmark_add</span>
-                            ADD_TO_ARCHIVE
-                        </button>
+                    <div className="mt-8 flex flex-wrap gap-4">
+                        {movie.trailerUrl && (
+                            <button 
+                                onClick={() => setIsTrailerOpen(true)}
+                                className="px-8 py-3 bg-primary text-black font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-white transition-all hover:scale-105 active:scale-95 rounded-none"
+                            >
+                                <span className="material-symbols-outlined">play_circle</span> Watch Trailer
+                            </button>
+                        )}
                     </div>
+
+                    {movie.ottPlatforms && movie.ottPlatforms.length > 0 && (
+                        <div className="mt-8 p-4 bg-white/5 border border-white/10 border-l-4 border-l-primary max-w-md">
+                            <h4 className="text-[10px] font-headline uppercase tracking-widest text-primary mb-3">Streaming On</h4>
+                            <div className="flex flex-wrap gap-4">
+                                {movie.ottPlatforms.map(platform => (
+                                    <div key={platform.id} className="flex flex-col items-center gap-1 group">
+                                        <img 
+                                            src={platform.logoUrl} 
+                                            alt={platform.name} 
+                                            className="w-10 h-10 rounded-lg group-hover:scale-110 transition-transform shadow-lg"
+                                        />
+                                        <span className="text-[8px] text-white/40 uppercase font-headline hidden group-hover:block">{platform.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="mt-8 pt-8">
                         <h3 className="font-headline uppercase tracking-[0.2em] text-xs text-primary mb-4">[SYNOPSIS_DECRYPTED]</h3>
-                        <p className="text-white/80 font-body text-lg leading-relaxed max-w-2xl">{movie.synopsis || "No data recovered."}</p>
+                        <p className="text-white/80 font-body text-lg leading-relaxed max-w-2xl">{movie.synopsis || movie.overview || "No data recovered."}</p>
                     </div>
                 </div>
             </div>
@@ -132,18 +182,30 @@ const MovieDetail = () => {
                     {reviews.length === 0 ? <p className="text-white/40 font-headline text-xs tracking-widest uppercase">No logs recorded. Initialize sequence.</p> : null}
                     
                     <div className="space-y-4">
-                        {reviews.map(r => (
-                            <div key={r.id} className="bg-surface-container-lowest p-6 border border-white/5 hover:border-primary/50 transition-colors">
+                        {reviews.map((review, i) => {
+                        const rating = review.rating || 0;
+                        const ratingColor = rating >= 8 ? 'text-green-400' : rating >= 6 ? 'text-amber-400' : 'text-red-400';
+                        const sentiment = rating >= 8 ? 'POSITIVE' : rating >= 6 ? 'NEUTRAL' : 'NEGATIVE';
+                        const rawDate = review.created_at || review.createdAt;
+                        const displayDate = rawDate
+                            ? new Date(rawDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : 'UNKNOWN';
+                        const authorName = (review.review_title || review.reviewTitle || '').replace('Review by ', '') || 'VERIFIED_AUDIENCE';
+                        return (
+                            <div key={review.id || i} className="p-6 bg-white/5 border border-white/10 hover:border-primary/30 transition-colors">
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h4 className="font-bold text-white font-headline tracking-wide uppercase text-sm">{r.review_title}</h4>
-                                        <p className="text-[10px] text-white/40 font-headline tracking-widest mt-1 uppercase">ID: {r.user_id ? r.user_id : 'GUEST_ENTITY'}</p>
+                                        <h4 className="text-white font-headline uppercase tracking-wider text-sm">{authorName}</h4>
+                                        <p className="text-[10px] text-white/40 font-headline uppercase tracking-widest mt-1">SENTIMENT: {sentiment} // {displayDate}</p>
                                     </div>
-                                    <span className="font-headline text-xl text-primary font-bold">{r.rating}<span className="text-xs text-white/30">/10</span></span>
+                                    <div className={`font-bold font-headline text-lg ${ratingColor}`}>{rating}/10</div>
                                 </div>
-                                <p className="text-white/70 font-body text-sm leading-relaxed">{r.review_body}</p>
+                                <p className="text-white/60 text-sm leading-relaxed italic line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
+                                    &ldquo;{review.review_body || review.reviewBody}&rdquo;
+                                </p>
                             </div>
-                        ))}
+                        );
+                    })}
                     </div>
                 </div>
 
@@ -165,7 +227,12 @@ const MovieDetail = () => {
                     </form>
                 </div>
             </div>
-            
+
+            <TrailerModal 
+                isOpen={isTrailerOpen} 
+                onClose={() => setIsTrailerOpen(false)} 
+                videoUrl={movie?.trailerUrl} 
+            />
         </div>
     );
 };

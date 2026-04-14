@@ -16,13 +16,28 @@ const GlitchMovieCard = ({ m }) => (
             )}
         </Link>
         <div className="p-4 md:p-6 border-t border-white/5 relative bg-gradient-to-t from-surface-container-lowest to-transparent">
-            <span className="font-headline text-[10px] tracking-widest text-secondary block mb-2 font-bold italic uppercase truncate">{m.genres ? m.genres.split(',')[0] : 'STATUS: ANOMALY'}</span>
-            <Link to={`/movie/${m.id}`} className="text-xl font-bold uppercase tracking-tight mb-2 block hover:text-primary transition-colors font-headline truncate">{m.title}</Link>
-            <p className="text-[10px] text-white/40 uppercase tracking-widest font-headline">{new Date(m.release_date).getFullYear()} // RATING: {m.aggregate_rating}</p>
+            <span className="font-headline text-[10px] tracking-widest text-secondary block mb-2 font-bold italic uppercase truncate">
+                {m.genres && Array.isArray(m.genres) && m.genres.length > 0 
+                  ? m.genres.slice(0, 3).map(g => g.name || g).join(' / ') 
+                  : (typeof m.genres === 'string' ? m.genres.split(',').slice(0, 3).join(' / ') : 'STATUS: ANOMALY')}
+            </span>
+             <Link to={`/movie/${m.id}`} className="text-xl font-bold uppercase tracking-tight mb-2 block hover:text-primary transition-colors font-headline truncate uppercase">{m.title}</Link>
+             <p className="text-[10px] text-white/40 uppercase tracking-widest font-headline flex items-center gap-2">
+                {(m.releaseDate || m.release_date || '0000').substring(0, 4)} // RATING: {m.aggregateRating || m.aggregate_rating || 'N/A'}
+                {m.ageCertificate && (
+                    <span className={`px-1.5 py-0.5 border rounded-sm text-[8px] font-black ${
+                        m.ageCertificate === 'A' || m.ageCertificate === 'R' ? 'border-red-500 text-red-500' :
+                        m.ageCertificate === 'UA' || m.ageCertificate === 'PG-13' ? 'border-amber-500 text-amber-500' :
+                        'border-green-500 text-green-500'
+                    }`}>
+                        {m.ageCertificate}
+                    </span>
+                )}
+            </p>
             
             <div className="mt-4 flex gap-1 h-1">
                 {Array(5).fill(0).map((_, i) => (
-                    <div key={i} className={`flex-1 ${i < Math.round(m.aggregate_rating / 2) ? 'bg-primary' : 'bg-surface-variant'}`}></div>
+                    <div key={i} className={`flex-1 ${i < Math.round((m.aggregateRating || m.aggregate_rating || 0) / 2) ? 'bg-primary' : 'bg-surface-variant'}`}></div>
                 ))}
             </div>
         </div>
@@ -32,10 +47,12 @@ const GlitchMovieCard = ({ m }) => (
 export const Home = () => {
     const [featuredMovies, setFeaturedMovies] = useState([]);
     const [decadeMovies, setDecadeMovies] = useState([]);
+    const [nowPlayingMovies, setNowPlayingMovies] = useState([]);
 
     useEffect(() => {
         api.get('/movies/featured').then(res => setFeaturedMovies(res.data)).catch(() => {});
         api.get('/movies/decade').then(res => setDecadeMovies(res.data)).catch(() => {});
+        api.get('/movies/now-playing').then(res => setNowPlayingMovies(res.data)).catch(() => {});
     }, []);
 
     const heroFeatured = featuredMovies[0];
@@ -58,7 +75,18 @@ export const Home = () => {
             {heroFeatured && (
                 <div className="lg:col-span-4 bg-primary-container p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 group cursor-pointer overflow-hidden relative shadow-[0_0_50px_rgba(202,253,0,0.1)] hover:shadow-[0_0_80px_rgba(202,253,0,0.2)] transition-shadow">
                     <div className="flex-1 z-10">
-                        <div className="font-headline uppercase tracking-[0.5em] text-on-primary-container text-[10px] mb-4 font-black">CRITICAL_RECOMMENDATION // V1.0</div>
+                        <div className="flex items-center gap-3 mb-4">
+                            {heroFeatured.ageCertificate && (
+                                <span className={`text-[10px] font-bold px-2 py-1 border rounded ${
+                                    heroFeatured.ageCertificate === 'A' || heroFeatured.ageCertificate === 'R' ? 'border-red-500 text-red-500' :
+                                    heroFeatured.ageCertificate === 'UA' || heroFeatured.ageCertificate === 'PG-13' ? 'border-amber-500 text-amber-500' :
+                                    'border-green-500 text-green-500'
+                                }`}>
+                                    {heroFeatured.ageCertificate}
+                                </span>
+                            )}
+                            <div className="font-headline uppercase tracking-[0.5em] text-on-primary-container text-[10px] font-black">CRITICAL_RECOMMENDATION // V1.0</div>
+                        </div>
                         <h3 className="text-on-primary-container text-5xl md:text-6xl font-black uppercase tracking-tighter leading-tight font-headline">{heroFeatured.title}</h3>
                         <p className="text-on-primary-container/80 max-w-xl mt-6 font-medium italic font-body">{heroFeatured.synopsis || heroFeatured.description || "A masterful documentation of reality distortion."}</p>
                         <Link to={`/movie/${heroFeatured.id}`} className="inline-block mt-8 border-2 border-on-primary-container px-8 py-3 font-headline font-bold uppercase tracking-widest text-xs hover:bg-on-primary-container hover:text-primary-container transition-all">ACCESS_DATA_RECORDS</Link>
@@ -73,6 +101,7 @@ export const Home = () => {
 
             {/* Moving Carousels */}
             <section className="space-y-4">
+                <Carousel title="IN CINEMAS NOW" movies={nowPlayingMovies} />
                 <Carousel title="NEWLY FEATURED_ANOMALIES" movies={featuredMovies} />
                 <Carousel title="BEST_OF_THE_DECADE" movies={decadeMovies} />
             </section>

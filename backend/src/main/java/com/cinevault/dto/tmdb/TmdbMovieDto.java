@@ -31,6 +31,18 @@ public class TmdbMovieDto {
     @JsonProperty("genre_ids")
     private List<Integer> genreIds;
 
+    @JsonProperty("genres")
+    private List<Genre> genres;
+
+    public static class Genre {
+        private int id;
+        private String name;
+        public int getId() { return id; }
+        public void setId(int id) { this.id = id; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+    }
+
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public String getTitle() { return title; }
@@ -51,6 +63,8 @@ public class TmdbMovieDto {
     public void setOriginalLanguage(String originalLanguage) { this.originalLanguage = originalLanguage; }
     public List<Integer> getGenreIds() { return genreIds; }
     public void setGenreIds(List<Integer> genreIds) { this.genreIds = genreIds; }
+    public List<Genre> getGenres() { return genres; }
+    public void setGenres(List<Genre> genres) { this.genres = genres; }
     public boolean isAdult() { return adult; }
     public void setAdult(boolean adult) { this.adult = adult; }
 }

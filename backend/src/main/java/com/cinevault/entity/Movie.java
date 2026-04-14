@@ -2,6 +2,8 @@ package com.cinevault.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.util.Set;
+import java.util.HashSet;
 
 @Entity
 @Table(name = "movies")
@@ -25,8 +27,21 @@ public class Movie {
 
     private String synopsis;
 
-    @Column(name = "genres")
-    private String genres;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "movie_genres",
+        joinColumns = @JoinColumn(name = "movie_id"),
+        inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    private Set<Genre> genres = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "movie_ott",
+        joinColumns = @JoinColumn(name = "movie_id"),
+        inverseJoinColumns = @JoinColumn(name = "platform_id")
+    )
+    private Set<OttPlatform> ottPlatforms = new HashSet<>();
 
     @Column(name = "poster_url")
     private String posterUrl;
@@ -126,12 +141,20 @@ public class Movie {
         this.synopsis = synopsis;
     }
 
-    public String getGenres() {
+    public Set<Genre> getGenres() {
         return genres;
     }
 
-    public void setGenres(String genres) {
+    public void setGenres(Set<Genre> genres) {
         this.genres = genres;
+    }
+
+    public Set<OttPlatform> getOttPlatforms() {
+        return ottPlatforms;
+    }
+
+    public void setOttPlatforms(Set<OttPlatform> ottPlatforms) {
+        this.ottPlatforms = ottPlatforms;
     }
 
     public String getPosterUrl() {

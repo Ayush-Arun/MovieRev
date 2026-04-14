@@ -39,13 +39,3 @@ export const Watchlist = () => {
         </div>
     );
 };
-
-export const Showtimes = () => {
-    return (
-        <div className="p-8 text-center text-slate-400">
-            <h1 className="text-3xl font-bold text-white mb-4">Theatre Showtimes</h1>
-            <p>Select a movie or city to view available showtimes and book tickets.</p>
-            {/* Implementation details mapped to ShowtimesController omitted for brevity */}
-        </div>
-    );
-};

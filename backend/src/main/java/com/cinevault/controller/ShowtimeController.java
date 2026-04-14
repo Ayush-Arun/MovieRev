@@ -19,9 +19,22 @@ public class ShowtimeController {
     public ResponseEntity<List<Map<String, Object>>> getShowtimes(@RequestParam(required = false) Long movieId,
                                                                   @RequestParam(required = false) String city,
                                                                   @RequestParam(required = false) String date) {
-        String sql = "SELECT s.*, t.name as theatre_name, t.city FROM showtimes s JOIN theatres t ON s.theatre_id = t.id WHERE 1=1";
-        // Dynamic query building logic here omitted for brevity but handles city, date, movieId
-        return ResponseEntity.ok(jdbcTemplate.queryForList(sql));
+        StringBuilder sql = new StringBuilder(
+            "SELECT s.*, t.name as theatre_name, t.city, m.title as movie_title, m.poster_url " +
+            "FROM showtimes s " +
+            "JOIN theatres t ON s.theatre_id = t.id " +
+            "JOIN movies m ON s.movie_id = m.id " +
+            "WHERE 1=1"
+        );
+        
+        if (movieId != null) sql.append(" AND s.movie_id = ").append(movieId);
+        if (city != null && !city.isEmpty()) sql.append(" AND t.city = '").append(city).append("'");
+        if (date != null && !date.isEmpty()) sql.append(" AND s.show_date = '").append(date).append("'");
+        else sql.append(" AND s.show_date = CURRENT_DATE");
+
+        sql.append(" ORDER BY s.show_time ASC");
+        
+        return ResponseEntity.ok(jdbcTemplate.queryForList(sql.toString()));
     }
 
     @PostMapping("/book")

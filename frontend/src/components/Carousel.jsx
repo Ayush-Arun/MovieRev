@@ -18,15 +18,40 @@ const Carousel = ({ title, movies }) => {
         return () => clearInterval(interval);
     }, []);
 
+    const scroll = (direction) => {
+        if (scrollRef.current) {
+            const scrollAmount = 224; // 200px card + 24px gap
+            scrollRef.current.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    };
+
     if (!movies || movies.length === 0) return null;
 
     return (
-        <div className="my-12 relative w-full">
+        <div className="my-12 relative w-full group/carousel">
             <h2 className="text-xl font-headline font-bold text-white uppercase tracking-widest border-l-4 border-primary pl-4 mb-6">{title}</h2>
             
+            {/* Navigation Arrows */}
+            <button 
+                onClick={() => scroll('left')}
+                className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-20 bg-surface-container-highest/80 hover:bg-primary border border-white/10 text-white hover:text-black p-2 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] md:flex hidden"
+            >
+                <span className="material-symbols-outlined">chevron_left</span>
+            </button>
+            
+            <button 
+                onClick={() => scroll('right')}
+                className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-20 bg-surface-container-highest/80 hover:bg-primary border border-white/10 text-white hover:text-black p-2 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] md:flex hidden"
+            >
+                <span className="material-symbols-outlined">chevron_right</span>
+            </button>
+
             <div 
                 ref={scrollRef} 
-                className="flex gap-6 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4"
+                className="flex gap-6 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-4 scroll-smooth"
             >
                 {movies.map(m => (
                     <div key={m.id} className="min-w-[200px] snap-start relative group rounded-xl overflow-hidden border border-white/5 bg-surface-container hover:border-primary/50 transition-colors">
@@ -36,11 +61,13 @@ const Carousel = ({ title, movies }) => {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-100 flex flex-col justify-end p-4 transition-opacity">
                                     <h3 className="font-bold text-white text-sm truncate uppercase tracking-widest font-headline">{m.title}</h3>
                                     <div className="flex justify-between items-center mt-1">
-                                        <span className="text-xs text-primary font-bold">{m.aggregateRating || m.aggregate_rating ? `★ ${(m.aggregateRating || m.aggregate_rating).toFixed(1)}` : ''}</span>
-                                        <span className="text-[10px] text-white/50">{m.releaseDate ? (m.releaseDate || m.release_date).substring(0,4) : ''}</span>
+                                        <span className="text-xs text-primary font-bold">{(m.aggregateRating || m.aggregate_rating) ? `★ ${(m.aggregateRating || m.aggregate_rating).toFixed(1)}` : ''}</span>
+                                        <span className="text-[10px] text-white/50">{(m.releaseDate || m.release_date || '0000').substring(0,4)}</span>
                                     </div>
                                     {m.genres && (
-                                        <span className="text-[9px] text-white/30 uppercase mt-1 truncate">{m.genres}</span>
+                                        <span className="text-[9px] text-white/30 uppercase mt-1 truncate">
+                                            {Array.isArray(m.genres) ? m.genres.slice(0, 3).map(g => g.name || g).join(' / ') : m.genres}
+                                        </span>
                                     )}
                                 </div>
                             </div>

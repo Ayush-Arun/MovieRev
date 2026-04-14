@@ -37,19 +37,32 @@ public class MovieController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Movie>> searchMovies(@RequestParam String q) {
+    public ResponseEntity<List<Movie>> searchMovies(@RequestParam String q, @RequestParam(required = false) String genre) {
         tmdbSyncService.searchAndIngest(q);
+        if (genre != null && !genre.isEmpty()) {
+            return ResponseEntity.ok(movieRepository.searchMoviesWithGenre(q, genre));
+        }
         return ResponseEntity.ok(movieRepository.searchMovies(q));
     }
 
     @GetMapping("/featured")
     public ResponseEntity<List<Movie>> getFeaturedMovies() {
-        return ResponseEntity.ok(movieRepository.findNewlyFeatured());
+        java.time.LocalDate since = java.time.LocalDate.now().minusYears(1);
+        return ResponseEntity.ok(movieRepository.findNewlyFeatured(since));
     }
 
     @GetMapping("/decade")
     public ResponseEntity<List<Movie>> getDecadeMovies() {
-        return ResponseEntity.ok(movieRepository.findBestOfDecade());
+        java.time.LocalDate start = java.time.LocalDate.now().minusYears(10);
+        java.time.LocalDate end = java.time.LocalDate.now().minusYears(1);
+        return ResponseEntity.ok(movieRepository.findBestOfDecade(start, end));
+    }
+
+    @GetMapping("/now-playing")
+    public ResponseEntity<List<Movie>> getNowPlaying() {
+        java.time.LocalDate start = java.time.LocalDate.now().minusMonths(1);
+        java.time.LocalDate end = java.time.LocalDate.now().plusMonths(1);
+        return ResponseEntity.ok(movieRepository.findNowPlaying(start, end));
     }
 
     @GetMapping("/browse")
