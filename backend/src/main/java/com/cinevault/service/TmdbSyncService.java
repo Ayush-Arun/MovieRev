@@ -110,10 +110,10 @@ public class TmdbSyncService {
     }
 
     @Transactional
-    public void syncMovieDetails(Integer tmdbId) {
+    public Movie syncMovieDetails(Integer tmdbId) {
         if (apiKey == null || apiKey.isEmpty()) {
             System.err.println("TMDB API Key missing, skipping sync.");
-            return;
+            return null;
         }
 
         String detailsUrl = baseUrl + "/movie/" + tmdbId + "?api_key=" + apiKey;
@@ -123,19 +123,19 @@ public class TmdbSyncService {
         try {
             ResponseEntity<TmdbMovieDto> movieResponse = restTemplate.getForEntity(detailsUrl, TmdbMovieDto.class);
             TmdbMovieDto movieDto = movieResponse.getBody();
-            if (movieDto == null) return;
+            if (movieDto == null) return null;
 
             if (movieDto.isAdult() || isContentInappropriate(movieDto)) {
                 System.out.println("Skipping/removing inappropriate movie: " + movieDto.getTitle());
                 movieRepository.findByTmdbId(tmdbId).ifPresent(m -> movieRepository.delete(m));
-                return;
+                return null;
             }
 
             // Enforce: only save movies with a real poster image
             if (movieDto.getPosterPath() == null || movieDto.getPosterPath().isEmpty()) {
                 System.out.println("Skipping movie without poster: " + movieDto.getTitle());
                 movieRepository.findByTmdbId(tmdbId).ifPresent(m -> movieRepository.delete(m));
-                return;
+                return null;
             }
             
             // Save or Update Movie
@@ -182,10 +182,11 @@ public class TmdbSyncService {
 
             // Re-enforce TMDB rating as source of truth after all sub-syncs
             savedMovie.setAggregateRating(movieDto.getVoteAverage());
-            movieRepository.save(savedMovie);
+            return movieRepository.save(savedMovie);
 
         } catch (Exception e) {
             System.err.println("Failed to sync movie " + tmdbId + ": " + e.getMessage());
+            return null;
         }
     }
 
@@ -359,8 +360,9 @@ public class TmdbSyncService {
         return jdbcTemplate.queryForObject(insertSql, Long.class, tmdbId, name, img);
     }
 
-    public void searchAndIngest(String query) {
-        if (apiKey == null || apiKey.isEmpty()) return;
+    public List<Movie> searchAndIngest(String query) {
+        if (apiKey == null || apiKey.isEmpty()) return List.of();
+        java.util.ArrayList<Movie> synced = new java.util.ArrayList<>();
         try {
             String url = baseUrl + "/search/movie?api_key=" + apiKey + "&query=" + query + "&include_adult=false";
             ResponseEntity<TmdbResponse<TmdbMovieDto>> response = restTemplate.exchange(
@@ -368,13 +370,15 @@ public class TmdbSyncService {
             );
             if (response.getBody() != null && response.getBody().getResults() != null) {
                 List<TmdbMovieDto> results = response.getBody().getResults();
-                for (int i = 0; i < Math.min(results.size(), 5); i++) {
-                    syncMovieDetails(results.get(i).getId());
+                for (int i = 0; i < Math.min(results.size(), 3); i++) {
+                    Movie m = syncMovieDetails(results.get(i).getId());
+                    if (m != null) synced.add(m);
                 }
             }
         } catch (Exception e) {
             System.err.println("Failed to search and ingest: " + e.getMessage());
         }
+        return synced;
     }
 
     public void cleanAdultMovies() {

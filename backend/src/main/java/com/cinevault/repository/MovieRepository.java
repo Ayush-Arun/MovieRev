@@ -18,6 +18,9 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
     @Query("SELECT DISTINCT m FROM Movie m LEFT JOIN FETCH m.genres g WHERE LOWER(m.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(m.synopsis) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<Movie> searchMovies(@Param("query") String query);
 
+    @Query(value = "SELECT * FROM movies m WHERE similarity(m.title, :query) > 0.3 ORDER BY similarity(m.title, :query) DESC LIMIT 10", nativeQuery = true)
+    List<Movie> fuzzySearchMovies(@Param("query") String query);
+
     @Query(value = "SELECT * FROM get_movie_recommendations(:movieId)", nativeQuery = true)
     List<Map<String, Object>> getRecommendations(@Param("movieId") Long movieId);
 

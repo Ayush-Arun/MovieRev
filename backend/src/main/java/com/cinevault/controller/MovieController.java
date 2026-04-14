@@ -38,11 +38,54 @@ public class MovieController {
 
     @GetMapping("/search")
     public ResponseEntity<List<Movie>> searchMovies(@RequestParam String q, @RequestParam(required = false) String genre) {
-        tmdbSyncService.searchAndIngest(q);
+        List<Movie> results;
         if (genre != null && !genre.isEmpty()) {
-            return ResponseEntity.ok(movieRepository.searchMoviesWithGenre(q, genre));
+            results = new java.util.ArrayList<>(movieRepository.searchMoviesWithGenre(q, genre));
+        } else {
+            results = new java.util.ArrayList<>(movieRepository.searchMovies(q));
         }
-        return ResponseEntity.ok(movieRepository.searchMovies(q));
+
+        // Discovery Logic: 
+        // Trigger discovery if:
+        // 1. Local results are empty
+        // 2. OR none of the local results have 'q' in their title
+        boolean hasTitleMatch = results.stream()
+                .anyMatch(m -> m.getTitle().toLowerCase().contains(q.toLowerCase()));
+
+        if (results.isEmpty() || !hasTitleMatch) {
+            System.out.println("No direct title match for '" + q + "'. Triggering JIT Discovery...");
+            List<Movie> discovered = tmdbSyncService.searchAndIngest(q);
+            
+            // Add unique discovered movies to the list
+            for (Movie d : discovered) {
+                if (results.stream().noneMatch(r -> r.getTmdbId().equals(d.getTmdbId()))) {
+                    results.add(d);
+                }
+            }
+
+            // Fuzzy Fallback: if STILL nothing after discovery, try fuzzy matches locally
+            if (results.isEmpty()) {
+                results.addAll(movieRepository.fuzzySearchMovies(q));
+            }
+        }
+
+        // Final sorting: Title matches to the top
+        if (results != null) {
+            results.sort((a, b) -> {
+                boolean aMatch = a.getTitle().toLowerCase().contains(q.toLowerCase());
+                boolean bMatch = b.getTitle().toLowerCase().contains(q.toLowerCase());
+                if (aMatch && !bMatch) return -1;
+                if (!aMatch && bMatch) return 1;
+                return 0;
+            });
+        }
+
+        // Final fallback: Still empty? Suggestions.
+        if (results == null || results.isEmpty()) {
+            return ResponseEntity.ok(movieRepository.findNewlyFeatured(java.time.LocalDate.now().minusYears(5)));
+        }
+
+        return ResponseEntity.ok(results);
     }
 
     @GetMapping("/featured")
