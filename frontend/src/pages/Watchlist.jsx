@@ -18,7 +18,7 @@ export const Watchlist = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-7xl mx-auto px-6 space-y-6">
             <h1 className="text-3xl font-bold border-l-4 border-cine-gold pl-3">Your Watchlist</h1>
             {!user && <div className="p-4 bg-slate-800 border border-cine-gold text-cine-gold rounded">Sign in to save your watchlist permanently across devices!</div>}
             

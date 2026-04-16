@@ -30,7 +30,7 @@ const AppContent = () => {
             <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
             <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
             
-            <main className="pt-24 md:pl-64 pb-24 md:pb-12 min-h-screen relative z-10 transition-all duration-300">
+            <main className="pt-24 pb-24 md:pb-12 min-h-screen relative z-10 transition-all duration-300">
                 <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/browse" element={<Browse />} />

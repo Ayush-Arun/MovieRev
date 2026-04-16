@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/cinevault
     username: postgres
-    password: Ninja#@3.14
+    password: 583218
     driver-class-name: org.postgresql.Driver
 
   jpa:

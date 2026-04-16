@@ -133,4 +133,12 @@ public class AuthController {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
         return ResponseEntity.ok(new UserDto(user.getId(), user.getEmail(), user.getUsername(), user.getDisplayName(), user.getRole()));
     }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<?> deleteMyAccount(Authentication authentication) {
+        if (authentication == null) return ResponseEntity.status(401).build();
+        User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        userRepository.delete(user);
+        return ResponseEntity.ok("Account deleted successfully");
+    }
 }
