@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
                 try {
                     const res = await api.get('/auth/me');
                     setUser(res.data);
-                } catch (e) {
+                } catch {
                     // Handled by axios interceptor
                 }
             }
@@ -27,8 +27,9 @@ export const AuthProvider = ({ children }) => {
         };
         loadUser();
 
-        window.addEventListener('auth_error', () => setUser(null));
-        return () => window.removeEventListener('auth_error', () => setUser(null));
+        const handleAuthError = () => setUser(null);
+        window.addEventListener('auth_error', handleAuthError);
+        return () => window.removeEventListener('auth_error', handleAuthError);
     }, []);
 
     const login = async (email, password) => {
@@ -50,7 +51,9 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             await api.post('/auth/logout', { refreshToken: localStorage.getItem('refresh_token') });
-        } catch(e) {}
+        } catch {
+            // ignore logout errors from stale/expired tokens
+        }
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         setUser(null);

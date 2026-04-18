@@ -1,7 +1,6 @@
 // Profile.jsx
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api from '../api/axios';
 
 const Profile = () => {
     const { user } = useAuth();
