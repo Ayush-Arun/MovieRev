@@ -51,12 +51,28 @@ const MovieDetail = () => {
     const [reviews, setReviews] = useState([]);
     const [isTrailerOpen, setIsTrailerOpen] = useState(false);
     const [reviewForm, setReviewForm] = useState({ rating: 5, body: '', title: '' });
+    const [isArchived, setIsArchived] = useState(false);
+    const [archiveLoading, setArchiveLoading] = useState(false);
 
     useEffect(() => {
         api.get(`/movies/${id}`).then(res => setMovie(res.data)).catch(() => {});
         api.get(`/movies/${id}/cast`).then(res => setCast(res.data)).catch(() => {});
         api.get(`/movies/${id}/reviews`).then(res => setReviews(res.data)).catch(() => {});
     }, [id]);
+
+    // Check if already archived whenever movie loads or user changes
+    useEffect(() => {
+        if (!movie) return;
+        const params = new URLSearchParams({ movieId: movie.id });
+        if (user?.id) params.append('userId', user.id);
+        else {
+            const sid = localStorage.getItem('cv_session_id');
+            if (sid) params.append('sessionId', sid);
+        }
+        api.get(`/watchlist/check?${params.toString()}`)
+            .then(res => setIsArchived(res.data.archived === true))
+            .catch(() => {});
+    }, [movie, user]);
 
     const submitReview = async (e) => {
         e.preventDefault();
@@ -77,15 +93,18 @@ const MovieDetail = () => {
     };
 
     const addToWatchlist = async () => {
+        setArchiveLoading(true);
         try {
             await api.post('/watchlist', { 
                 movieId: movie.id,
                 userId: user?.id,
                 sessionId: localStorage.getItem('cv_session_id')
             });
-            alert('Added to Archive (Watchlist) successfully!');
+            setIsArchived(true);
         } catch(e) {
             alert('Failed to add to archive');
+        } finally {
+            setArchiveLoading(false);
         }
     };
 
@@ -153,12 +172,27 @@ const MovieDetail = () => {
                                 <span className="material-symbols-outlined">videocam_off</span> Trailer Unavailable
                             </button>
                         )}
-                        <button 
-                            onClick={addToWatchlist}
-                            className="px-8 py-3 bg-transparent border-2 border-primary text-primary font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-primary hover:text-black transition-all hover:scale-105 active:scale-95 rounded-none"
-                        >
-                            <span className="material-symbols-outlined">bookmark_add</span> Add to Archive
-                        </button>
+                        {isArchived ? (
+                            <button 
+                                disabled
+                                className="px-8 py-3 bg-surface-container border-2 border-white/20 text-white/40 font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 cursor-not-allowed rounded-none opacity-70"
+                            >
+                                <span className="material-symbols-outlined text-green-500">bookmark_added</span>
+                                <span>Archived</span>
+                                <span className="text-green-500 font-bold">✓</span>
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={addToWatchlist}
+                                disabled={archiveLoading}
+                                className={`px-8 py-3 bg-transparent border-2 border-primary text-primary font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-primary hover:text-black transition-all hover:scale-105 active:scale-95 rounded-none ${
+                                    archiveLoading ? 'opacity-50 cursor-wait' : ''
+                                }`}
+                            >
+                                <span className="material-symbols-outlined">{archiveLoading ? 'hourglass_top' : 'bookmark_add'}</span>
+                                {archiveLoading ? 'Archiving...' : 'Add to Archive'}
+                            </button>
+                        )}
                     </div>
 
                     {movie.ottPlatforms && movie.ottPlatforms.length > 0 && (

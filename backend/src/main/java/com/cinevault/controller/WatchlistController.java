@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/watchlist")
@@ -33,6 +34,28 @@ public class WatchlistController {
         }
 
         return ResponseEntity.ok(jdbcTemplate.queryForList(sql, param));
+    }
+
+    @GetMapping("/check")
+    public ResponseEntity<Map<String, Object>> checkInWatchlist(
+            @RequestParam Long movieId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String sessionId) {
+
+        String sql;
+        Object param;
+
+        if (userId != null) {
+            sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND user_id = ?";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, userId);
+            return ResponseEntity.ok(Collections.singletonMap("archived", count != null && count > 0));
+        } else if (sessionId != null) {
+            sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND session_id = ?";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, UUID.fromString(sessionId));
+            return ResponseEntity.ok(Collections.singletonMap("archived", count != null && count > 0));
+        } else {
+            return ResponseEntity.ok(Collections.singletonMap("archived", false));
+        }
     }
 
     @PostMapping
