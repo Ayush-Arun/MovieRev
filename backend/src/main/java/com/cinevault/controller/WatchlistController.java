@@ -35,11 +35,50 @@ public class WatchlistController {
         return ResponseEntity.ok(jdbcTemplate.queryForList(sql, param));
     }
 
+    @GetMapping("/check")
+    public ResponseEntity<Boolean> checkInWatchlist(@RequestParam Long movieId,
+                                                   @RequestParam(required = false) Long userId,
+                                                   @RequestParam(required = false) String sessionId) {
+        String sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND (";
+        Object param = null;
+
+        if (userId != null) {
+            sql += "user_id = ?)";
+            param = userId;
+        } else if (sessionId != null) {
+            sql += "session_id = ?)";
+            param = UUID.fromString(sessionId);
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, param);
+        return ResponseEntity.ok(count != null && count > 0);
+    }
+
     @PostMapping
     public ResponseEntity<?> addToWatchlist(@RequestBody Map<String, Object> body) {
         Integer movieId = (Integer) body.get("movieId");
         Object userIdObj = body.get("userId");
         Object sessionIdObj = body.get("sessionId");
+
+        // Check for duplicates before inserting
+        String checkSql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND (";
+        Object checkParam = null;
+        if (userIdObj != null) {
+            checkSql += "user_id = ?)";
+            checkParam = userIdObj;
+        } else if (sessionIdObj != null) {
+            checkSql += "session_id = ?)";
+            checkParam = UUID.fromString((String)sessionIdObj);
+        } else {
+            return ResponseEntity.badRequest().body("User or Session ID required");
+        }
+
+        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, movieId, checkParam);
+        if (count != null && count > 0) {
+            return ResponseEntity.ok("Already in watchlist");
+        }
 
         String sql = "INSERT INTO watchlist (movie_id, user_id, session_id) VALUES (?, ?, ?)";
         try {

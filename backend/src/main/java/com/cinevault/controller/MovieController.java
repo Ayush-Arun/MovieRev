@@ -108,6 +108,16 @@ public class MovieController {
         return ResponseEntity.ok(movieRepository.findNowPlaying(start, end));
     }
 
+    @GetMapping("/top-rated")
+    public ResponseEntity<List<Movie>> getTopRated() {
+        List<Movie> results = movieRepository.findTopRatedAllTime();
+        if (results.isEmpty()) {
+            System.out.println("Top Rated list empty. Launching formal @Async curation...");
+            tmdbSyncService.syncCuratedMasterpieces();
+        }
+        return ResponseEntity.ok(results);
+    }
+
     @GetMapping("/browse")
     public ResponseEntity<List<Movie>> browseMovies(@RequestParam(required = false) String genre) {
         if (genre != null && !genre.isEmpty()) {
