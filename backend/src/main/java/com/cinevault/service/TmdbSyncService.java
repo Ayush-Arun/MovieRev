@@ -9,6 +9,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -90,6 +91,62 @@ public class TmdbSyncService {
         System.out.println("Syncing NOW PLAYING movies from TMDB...");
         String url = baseUrl + "/movie/now_playing?api_key=" + apiKey + "&region=IN&language=en-US";
         fetchAndSaveMovies(url);
+    }
+
+    public void syncTopRatedMovies() {
+        System.out.println("Syncing TOP RATED ALL-TIME masterpieces from TMDB...");
+        // Fetch multiple pages to get a solid 'Top 100'
+        for (int i = 1; i <= 5; i++) {
+            String url = baseUrl + "/movie/top_rated?api_key=" + apiKey + "&page=" + i + "&language=en-US";
+            fetchAndSaveMovies(url);
+        }
+    }
+
+    @Async
+    public void syncCuratedMasterpieces() {
+        System.out.println("Syncing CURATED All-Time Masterpieces...");
+        
+        // Clear existing masterpieces first
+        jdbcTemplate.update("UPDATE movies SET is_masterpiece = FALSE");
+
+        List<String> titles = Arrays.asList(
+            "The Godfather", "The Shawshank Redemption", "Schindler's List", "Raging Bull", "Casablanca",
+            "Citizen Kane", "Gone with the Wind", "The Wizard of Oz", "One Flew Over the Cuckoo's Nest",
+            "Lawrence of Arabia", "Vertigo", "Psycho", "The Godfather Part II", "On the Waterfront",
+            "Sunset Blvd.", "Forrest Gump", "The Sound of Music", "12 Angry Men", "West Side Story",
+            "Star Wars: Episode IV – A New Hope", "2001: A Space Odyssey", "E.T. the Extra-Terrestrial", "The Silence of the Lambs",
+            "Chinatown", "The Bridge on the River Kwai", "Singin' in the Rain", "It's a Wonderful Life",
+            "Dr. Strangelove", "All About Eve", "The Great Escape", "North by Northwest", "Jaws",
+            "Rocky", "The Deer Hunter", "The Wild Bunch", "The Apartment", "Goodfellas", "Apocalypse Now",
+            "Amadeus", "Taxi Driver", "Double Indemnity", "Modern Times", "To Kill a Mockingbird",
+            "Mr. Smith Goes to Washington", "Rear Window", "The Third Man", "The Maltese Falcon",
+            "A Clockwork Orange", "The Treasure of the Sierra Madre", "Butch Cassidy and the Sundance Kid",
+            "The Graduate", "Platoon", "The Best Years of Our Lives", "Ben-Hur", "The Exorcist",
+            "The Pianist", "Gladiator", "Titanic", "Saving Private Ryan", "Braveheart",
+            "Terminator 2: Judgment Day", "Back to the Future", "Alien", "The Shining",
+            "Raiders of the Lost Ark", "Indiana Jones and the Last Crusade", "Jurassic Park", "The Matrix",
+            "The Lord of the Rings: The Fellowship of the Ring", "The Lord of the Rings: The Two Towers",
+            "The Lord of the Rings: The Return of the King", "Harry Potter and the Sorcerer's Stone",
+            "Harry Potter and the Deathly Hallows: Part 2", "Pirates of the Caribbean: The Curse of the Black Pearl",
+            "Spider-Man 2", "The Dark Knight", "Inception", "Fight Club", "Pulp Fiction", "Reservoir Dogs",
+            "Se7en", "The Usual Suspects", "American Beauty", "The Green Mile", "The Lion King",
+            "Toy Story", "Finding Nemo", "Up", "WALL·E", "Inside Out", "Coco", "Avengers: Infinity War",
+            "Avengers: Endgame", "Interstellar", "Dunkirk", "The Prestige", "Memento", "Whiplash", "La La Land"
+        );
+
+        for (String title : titles) {
+            System.out.println(">>> MASTERPIECE SYNC: Processing [" + title + "]");
+            List<Movie> results = searchAndIngest(title);
+            if (!results.isEmpty()) {
+                Movie m = results.get(0);
+                System.out.println(">>> MASTERPIECE SYNC: Match found for [" + title + "] -> TMDB ID: " + m.getTmdbId());
+                m.setIsMasterpiece(true);
+                movieRepository.save(m);
+            } else {
+                System.err.println(">>> MASTERPIECE SYNC: NO MATCH FOUND FOR [" + title + "]");
+            }
+        }
+        System.out.println(">>> MASTERPIECE SYNC: COMPLETED COLLECTION SYNC.");
     }
 
     public void fetchAndSaveMovies(String url) {
@@ -351,11 +408,16 @@ public class TmdbSyncService {
     private Long upsertPerson(int tmdbId, String name, String profilePath) {
         String selectSql = "SELECT id FROM people WHERE tmdb_id = ?";
         List<Long> ids = jdbcTemplate.queryForList(selectSql, Long.class, tmdbId);
-        if (!ids.isEmpty()) {
-            return ids.get(0);
-        }
         
         String img = (profilePath != null) ? imageBaseUrl + profilePath : null;
+
+        if (!ids.isEmpty()) {
+            Long existingId = ids.get(0);
+            // Always update to the latest TMDB truth (avoids "rubbish" legacy names)
+            jdbcTemplate.update("UPDATE people SET name = ?, profile_photo_url = ? WHERE id = ?", name, img, existingId);
+            return existingId;
+        }
+        
         String insertSql = "INSERT INTO people (tmdb_id, name, profile_photo_url) VALUES (?, ?, ?) RETURNING id";
         return jdbcTemplate.queryForObject(insertSql, Long.class, tmdbId, name, img);
     }

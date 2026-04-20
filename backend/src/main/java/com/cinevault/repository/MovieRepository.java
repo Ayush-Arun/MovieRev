@@ -38,4 +38,6 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     @Query("SELECT DISTINCT m FROM Movie m LEFT JOIN FETCH m.genres g WHERE m.releaseDate BETWEEN :start AND :end AND (m.ageCertificate IS NULL OR m.ageCertificate NOT IN ('A', 'R', 'NC-17', 'NR')) AND m.posterUrl IS NOT NULL ORDER BY m.releaseDate DESC")
     List<Movie> findNowPlaying(@Param("start") java.time.LocalDate start, @Param("end") java.time.LocalDate end);
+    @Query("SELECT DISTINCT m FROM Movie m LEFT JOIN FETCH m.genres g WHERE m.isMasterpiece = true AND (m.ageCertificate IS NULL OR m.ageCertificate NOT IN ('A', 'R', 'NC-17', 'NR')) AND m.posterUrl IS NOT NULL ORDER BY m.aggregateRating DESC")
+    List<Movie> findTopRatedAllTime();
 }

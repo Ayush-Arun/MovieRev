@@ -64,6 +64,24 @@ public class WatchlistController {
         Object userIdObj = body.get("userId");
         Object sessionIdObj = body.get("sessionId");
 
+        // Check for duplicates before inserting
+        String checkSql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND (";
+        Object checkParam = null;
+        if (userIdObj != null) {
+            checkSql += "user_id = ?)";
+            checkParam = userIdObj;
+        } else if (sessionIdObj != null) {
+            checkSql += "session_id = ?)";
+            checkParam = UUID.fromString((String)sessionIdObj);
+        } else {
+            return ResponseEntity.badRequest().body("User or Session ID required");
+        }
+
+        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, movieId, checkParam);
+        if (count != null && count > 0) {
+            return ResponseEntity.ok("Already in watchlist");
+        }
+
         String sql = "INSERT INTO watchlist (movie_id, user_id, session_id) VALUES (?, ?, ?)";
         try {
             jdbcTemplate.update(sql, movieId, userIdObj,

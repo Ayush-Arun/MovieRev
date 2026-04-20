@@ -69,12 +69,15 @@ public class Movie {
 
     @Column(name = "aggregate_rating")
     private Double aggregateRating;
+
+    @Column(name = "is_masterpiece")
+    private Boolean isMasterpiece = false;
     
     // search_vector omitted as it's handled completely by PG and shouldn't be read/written standardly
 
     public Movie() {}
 
-    public Movie(Long id, Integer tmdbId, String title, String originalLanguage, LocalDate releaseDate, String synopsis, String posterUrl, String trailerUrl, String ageCertificate, String status, Integer runtimeMinutes, String format, String productionHouse, Long budget, Long boxOffice, Double aggregateRating) {
+    public Movie(Long id, Integer tmdbId, String title, String originalLanguage, LocalDate releaseDate, String synopsis, String posterUrl, String trailerUrl, String ageCertificate, String status, Integer runtimeMinutes, String format, String productionHouse, Long budget, Long boxOffice, Double aggregateRating, Boolean isMasterpiece) {
         this.id = id;
         this.tmdbId = tmdbId;
         this.title = title;
@@ -91,6 +94,15 @@ public class Movie {
         this.budget = budget;
         this.boxOffice = boxOffice;
         this.aggregateRating = aggregateRating;
+        this.isMasterpiece = isMasterpiece;
+    }
+
+    public Boolean getIsMasterpiece() {
+        return isMasterpiece;
+    }
+
+    public void setIsMasterpiece(Boolean isMasterpiece) {
+        this.isMasterpiece = isMasterpiece;
     }
 
     public Long getId() {

@@ -50,6 +50,7 @@ const MovieDetail = () => {
     const [cast, setCast] = useState([]);
     const [reviews, setReviews] = useState([]);
     const [isTrailerOpen, setIsTrailerOpen] = useState(false);
+    const [isInWatchlist, setIsInWatchlist] = useState(false);
     const [reviewForm, setReviewForm] = useState({ rating: 5, body: '', title: '' });
     const [isArchived, setIsArchived] = useState(false);
     const [archiveLoading, setArchiveLoading] = useState(false);
@@ -58,7 +59,41 @@ const MovieDetail = () => {
         api.get(`/movies/${id}`).then(res => setMovie(res.data)).catch(() => {});
         api.get(`/movies/${id}/cast`).then(res => setCast(res.data)).catch(() => {});
         api.get(`/movies/${id}/reviews`).then(res => setReviews(res.data)).catch(() => {});
-    }, [id]);
+        
+        // Check watchlist status
+        const sessionId = localStorage.getItem('cv_session_id') || crypto.randomUUID();
+        if (!localStorage.getItem('cv_session_id')) localStorage.setItem('cv_session_id', sessionId);
+        
+        const checkUrl = user 
+            ? `/watchlist/check?movieId=${id}&userId=${user.id}` 
+            : `/watchlist/check?movieId=${id}&sessionId=${sessionId}`;
+            
+        api.get(checkUrl).then(res => setIsInWatchlist(res.data)).catch(() => {});
+    }, [id, user]);
+
+    const toggleWatchlist = async () => {
+        try {
+            const sessionId = localStorage.getItem('cv_session_id');
+            if (isInWatchlist) {
+                const fetchUrl = user ? `/watchlist?userId=${user.id}` : `/watchlist?sessionId=${sessionId}`;
+                const res = await api.get(fetchUrl);
+                const item = res.data.find(x => parseInt(x.movie_id) === parseInt(id));
+                if (item) {
+                    await api.delete(`/watchlist/${item.id}`);
+                    setIsInWatchlist(false);
+                }
+            } else {
+                await api.post('/watchlist', {
+                    movieId: parseInt(id),
+                    userId: user?.id,
+                    sessionId: sessionId
+                });
+                setIsInWatchlist(true);
+            }
+        } catch (e) {
+            console.error("Watchlist error", e);
+        }
+    };
 
     // Check if already archived whenever movie loads or user changes
     useEffect(() => {
@@ -193,6 +228,18 @@ const MovieDetail = () => {
                                 {archiveLoading ? 'Archiving...' : 'Add to Archive'}
                             </button>
                         )}
+                        <button 
+                            onClick={toggleWatchlist}
+                            disabled={isInWatchlist}
+                            className={`px-8 py-3 border-2 font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 transition-all rounded-none ${
+                                isInWatchlist 
+                                    ? 'border-secondary/50 text-secondary/50 cursor-not-allowed' 
+                                    : 'border-white/20 text-white hover:border-primary hover:text-primary hover:scale-105 active:scale-95'
+                            }`}
+                        >
+                            <span className="material-symbols-outlined">{isInWatchlist ? 'bookmark_added' : 'bookmark_add'}</span> 
+                            {isInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                        </button>
                     </div>
 
                     {movie.ottPlatforms && movie.ottPlatforms.length > 0 && (
@@ -239,7 +286,7 @@ const MovieDetail = () => {
                                     )}
                                 </div>
                                 <div className="text-center">
-                                    <p className="font-headline uppercase text-white font-bold text-xs tracking-wider mb-1 truncate">{c.name}</p>
+                                    <p className="font-headline uppercase text-white font-bold text-xs tracking-wider mb-1 truncate">{c.person_name || c.name}</p>
                                     <p className="font-headline uppercase text-secondary text-[9px] tracking-widest truncate">{c.character_name}</p>
                                 </div>
                             </div>
