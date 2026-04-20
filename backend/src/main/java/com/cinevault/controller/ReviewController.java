@@ -24,6 +24,18 @@ public class ReviewController {
         Object userIdObj = body.get("userId");
         Object sessionIdObj = body.get("sessionId");
 
+        if (userIdObj != null) {
+            try {
+                java.time.LocalDateTime createdAt = jdbcTemplate.queryForObject(
+                    "SELECT created_at FROM users WHERE id = ?", java.time.LocalDateTime.class, userIdObj);
+                if (createdAt != null && createdAt.isAfter(java.time.LocalDateTime.now().minusDays(1))) {
+                    return ResponseEntity.badRequest().body("Accounts must be at least 24 hours old to post reviews. This prevents bot spam.");
+                }
+            } catch (Exception e) {
+                // Ignore DB read failure, allow processing to continue or log
+            }
+        }
+
         String sql = "INSERT INTO reviews (movie_id, user_id, session_id, rating, review_title, review_body) VALUES (?, ?, ?, ?, ?, ?)";
         
         try {

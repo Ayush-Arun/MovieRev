@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         const sessionId = localStorage.getItem('cv_session_id');
-        const res = await api.post('/auth/login', { email, password, session_id: sessionId });
+        const res = await api.post('/auth/login', { email, password, sessionId });
         localStorage.setItem('access_token', res.data.access_token);
         localStorage.setItem('refresh_token', res.data.refresh_token);
         setUser(res.data.user);
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (email, username, password, displayName) => {
         const sessionId = localStorage.getItem('cv_session_id');
-        const res = await api.post('/auth/register', { email, username, password, display_name: displayName, session_id: sessionId });
+        const res = await api.post('/auth/register', { email, username, password, displayName, sessionId });
         localStorage.setItem('access_token', res.data.access_token);
         localStorage.setItem('refresh_token', res.data.refresh_token);
         setUser(res.data.user);
@@ -56,8 +56,21 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const deleteAccount = async () => {
+        try {
+            await api.delete('/auth/me');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            setUser(null);
+            alert("Account permanently deleted.");
+        } catch(e) {
+            console.error("Failed to delete account", e);
+            alert("Failed to delete account");
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading, isAdmin: user?.role === 'admin' }}>
+        <AuthContext.Provider value={{ user, login, register, logout, deleteAccount, loading, isAdmin: user?.role === 'admin' }}>
             {!loading && children}
         </AuthContext.Provider>
     );

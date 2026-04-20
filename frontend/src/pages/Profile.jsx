@@ -2,10 +2,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
-    const { user } = useAuth();
+    const { user, deleteAccount } = useAuth();
     const [stats, setStats] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         // Mock fetch stats
@@ -33,6 +35,26 @@ const Profile = () => {
                             <p className="flex justify-between"><span>Average Rating:</span> <span className="font-bold">{stats.avgRating}/10</span></p>
                         </div>
                     ) : <p>Loading stats...</p>}
+                </div>
+            </div>
+
+            <div className="mt-12 pt-8 border-t border-error/20">
+                <h2 className="text-xl font-bold text-error mb-4 uppercase tracking-widest">Danger Zone</h2>
+                <div className="bg-error/10 border border-error/30 p-6 rounded-lg flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 className="text-white font-bold mb-1">Delete Account</h3>
+                        <p className="text-sm text-error/80">Permanently remove your identity, reviews, and tracking data from the network. This action cannot be reversed.</p>
+                    </div>
+                    <button 
+                        onClick={() => {
+                            if (window.confirm("Are you absolutely sure you want to permanently delete your account? All your reviews and data will be wiped.")) {
+                                deleteAccount().then(() => navigate('/'));
+                            }
+                        }}
+                        className="bg-error hover:bg-error/90 text-white font-headline tracking-widest text-xs px-6 py-3 rounded-md uppercase transition-colors shrink-0"
+                    >
+                        Initiate Deletion
+                    </button>
                 </div>
             </div>
         </div>
