@@ -50,13 +50,48 @@ const MovieDetail = () => {
     const [cast, setCast] = useState([]);
     const [reviews, setReviews] = useState([]);
     const [isTrailerOpen, setIsTrailerOpen] = useState(false);
+    const [isInWatchlist, setIsInWatchlist] = useState(false);
     const [reviewForm, setReviewForm] = useState({ rating: 5, body: '', title: '' });
 
     useEffect(() => {
         api.get(`/movies/${id}`).then(res => setMovie(res.data)).catch(() => {});
         api.get(`/movies/${id}/cast`).then(res => setCast(res.data)).catch(() => {});
         api.get(`/movies/${id}/reviews`).then(res => setReviews(res.data)).catch(() => {});
-    }, [id]);
+        
+        // Check watchlist status
+        const sessionId = localStorage.getItem('cv_session_id') || crypto.randomUUID();
+        if (!localStorage.getItem('cv_session_id')) localStorage.setItem('cv_session_id', sessionId);
+        
+        const checkUrl = user 
+            ? `/watchlist/check?movieId=${id}&userId=${user.id}` 
+            : `/watchlist/check?movieId=${id}&sessionId=${sessionId}`;
+            
+        api.get(checkUrl).then(res => setIsInWatchlist(res.data)).catch(() => {});
+    }, [id, user]);
+
+    const toggleWatchlist = async () => {
+        try {
+            const sessionId = localStorage.getItem('cv_session_id');
+            if (isInWatchlist) {
+                const fetchUrl = user ? `/watchlist?userId=${user.id}` : `/watchlist?sessionId=${sessionId}`;
+                const res = await api.get(fetchUrl);
+                const item = res.data.find(x => parseInt(x.movie_id) === parseInt(id));
+                if (item) {
+                    await api.delete(`/watchlist/${item.id}`);
+                    setIsInWatchlist(false);
+                }
+            } else {
+                await api.post('/watchlist', {
+                    movieId: parseInt(id),
+                    userId: user?.id,
+                    sessionId: sessionId
+                });
+                setIsInWatchlist(true);
+            }
+        } catch (e) {
+            console.error("Watchlist error", e);
+        }
+    };
 
     const submitReview = async (e) => {
         e.preventDefault();
@@ -205,7 +240,7 @@ const MovieDetail = () => {
                                     )}
                                 </div>
                                 <div className="text-center">
-                                    <p className="font-headline uppercase text-white font-bold text-xs tracking-wider mb-1 truncate">{c.name}</p>
+                                    <p className="font-headline uppercase text-white font-bold text-xs tracking-wider mb-1 truncate">{c.person_name || c.name}</p>
                                     <p className="font-headline uppercase text-secondary text-[9px] tracking-widest truncate">{c.character_name}</p>
                                 </div>
                             </div>

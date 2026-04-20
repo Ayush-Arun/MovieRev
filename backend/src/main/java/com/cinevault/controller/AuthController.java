@@ -60,7 +60,7 @@ public class AuthController {
         userRepository.save(user);
 
         if (request.sessionId() != null) {
-            jdbcTemplate.update("SELECT merge_guest_to_user(?, ?)", request.sessionId(), user.getId());
+            jdbcTemplate.queryForList("SELECT merge_guest_to_user(?, ?)", request.sessionId(), user.getId());
         }
 
         return authenticateAndGenerateResponse(user.getEmail(), request.password());
@@ -71,7 +71,7 @@ public class AuthController {
         if (request.sessionId() != null) {
             User user = userRepository.findByEmail(request.email()).orElse(null);
             if (user != null) {
-                jdbcTemplate.update("SELECT merge_guest_to_user(?, ?)", request.sessionId(), user.getId());
+                jdbcTemplate.queryForList("SELECT merge_guest_to_user(?, ?)", request.sessionId(), user.getId());
             }
         }
         return authenticateAndGenerateResponse(request.email(), request.password());

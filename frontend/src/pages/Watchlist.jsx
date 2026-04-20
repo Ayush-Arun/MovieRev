@@ -8,7 +8,8 @@ export const Watchlist = () => {
     const [list, setList] = useState([]);
 
     useEffect(() => {
-        const fetchUrl = user ? `/watchlist?userId=${user.id}` : `/watchlist?sessionId=${localStorage.getItem('cv_session_id')}`;
+        const sessionId = localStorage.getItem('cv_session_id');
+        const fetchUrl = user ? `/watchlist?userId=${user.id}` : `/watchlist?sessionId=${sessionId}`;
         api.get(fetchUrl).then(res => setList(res.data)).catch(() => {});
     }, [user]);
 
@@ -22,20 +23,38 @@ export const Watchlist = () => {
             <h1 className="text-3xl font-bold border-l-4 border-cine-gold pl-3">Your Watchlist</h1>
             {!user && <div className="p-4 bg-slate-800 border border-cine-gold text-cine-gold rounded">Sign in to save your watchlist permanently across devices!</div>}
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 {list.map(item => (
-                    <div key={item.id} className="relative group rounded-lg overflow-hidden border border-slate-700 bg-slate-800">
-                        <Link to={`/movie/${item.movie_id}`}>
-                            <div className="aspect-[2/3]">{item.poster_url && <img src={item.poster_url} className="w-full h-full object-cover" />}</div>
+                    <div key={item.id} className="group bg-surface-container-low transition-all rounded-none overflow-hidden border border-white/5 hover:border-primary/30 relative">
+                        <Link to={`/movie/${item.movie_id}`} className="block aspect-[2/3] overflow-hidden bg-black relative">
+                            {item.poster_url ? (
+                                <img src={item.poster_url} className="w-full h-full object-cover grayscale contrast-125 group-hover:grayscale-0 transition-all duration-500" alt={item.title} />
+                            ) : (
+                                <div className="w-full h-full flex flex-col justify-center items-center opacity-30 text-white font-headline">
+                                   <span className="material-symbols-outlined text-4xl mb-2">broken_image</span>
+                                   <span className="text-[10px] tracking-widest uppercase">DATA_MISSING</span>
+                                </div>
+                            )}
                         </Link>
-                        <div className="p-3">
-                            <h3 className="font-bold truncate">{item.title}</h3>
-                            <button onClick={() => remove(item.id)} className="mt-2 w-full text-sm bg-rose-500/20 text-rose-400 hover:bg-rose-500/40 p-2 rounded transition">Remove</button>
+                        <div className="p-6 bg-gradient-to-t from-surface-container-lowest to-transparent border-t border-white/5">
+                            <h3 className="font-headline text-lg font-bold text-white uppercase tracking-tight truncate mb-4">{item.title}</h3>
+                            <button 
+                                onClick={() => remove(item.id)} 
+                                className="w-full text-[10px] font-headline font-black uppercase tracking-[0.2em] border border-white/10 text-white/40 hover:text-error hover:border-error transition-all py-3 hover:bg-error/5"
+                            >
+                                DELETE_LOG_ENTRY
+                            </button>
                         </div>
                     </div>
                 ))}
-                {list.length === 0 && <p className="text-slate-400 col-span-full">Your watchlist is currently empty.</p>}
             </div>
+
+            {list.length === 0 && (
+                <div className="py-24 text-center border-2 border-dashed border-white/5">
+                    <span className="material-symbols-outlined text-white/10 text-6xl mb-4">inventory_2</span>
+                    <p className="text-white/20 font-headline uppercase tracking-[0.4em] text-xs">NO SUBJECTS RECORDED IN CURRENT SESSION.</p>
+                </div>
+            )}
         </div>
     );
 };

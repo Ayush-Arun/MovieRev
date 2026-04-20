@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { Link } from 'react-router-dom';
 import Carousel from '../components/Carousel';
+import HeroCarousel from '../components/HeroCarousel';
 
 const GlitchMovieCard = ({ m }) => (
     <div className="group bg-surface-container-low poster-glow transition-all rounded-sm overflow-hidden select-none">
@@ -48,11 +49,13 @@ export const Home = () => {
     const [featuredMovies, setFeaturedMovies] = useState([]);
     const [decadeMovies, setDecadeMovies] = useState([]);
     const [nowPlayingMovies, setNowPlayingMovies] = useState([]);
+    const [topRatedMovies, setTopRatedMovies] = useState([]);
 
     useEffect(() => {
         api.get('/movies/featured').then(res => setFeaturedMovies(res.data)).catch(() => {});
         api.get('/movies/decade').then(res => setDecadeMovies(res.data)).catch(() => {});
         api.get('/movies/now-playing').then(res => setNowPlayingMovies(res.data)).catch(() => {});
+        api.get('/movies/top-rated').then(res => setTopRatedMovies(res.data)).catch(() => {});
     }, []);
 
     const heroFeatured = featuredMovies[0];
@@ -72,35 +75,11 @@ export const Home = () => {
                 </div>
             </div>
 
-            {heroFeatured && (
-                <div className="lg:col-span-4 bg-primary-container p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 group cursor-pointer overflow-hidden relative shadow-[0_0_50px_rgba(202,253,0,0.1)] hover:shadow-[0_0_80px_rgba(202,253,0,0.2)] transition-shadow">
-                    <div className="flex-1 z-10">
-                        <div className="flex items-center gap-3 mb-4">
-                            {heroFeatured.ageCertificate && (
-                                <span className={`text-[10px] font-bold px-2 py-1 border rounded ${
-                                    heroFeatured.ageCertificate === 'A' || heroFeatured.ageCertificate === 'R' ? 'border-red-500 text-red-500' :
-                                    heroFeatured.ageCertificate === 'UA' || heroFeatured.ageCertificate === 'PG-13' ? 'border-amber-500 text-amber-500' :
-                                    'border-green-500 text-green-500'
-                                }`}>
-                                    {heroFeatured.ageCertificate}
-                                </span>
-                            )}
-                            <div className="font-headline uppercase tracking-[0.5em] text-on-primary-container text-[10px] font-black">CRITICAL_RECOMMENDATION // V1.0</div>
-                        </div>
-                        <h3 className="text-on-primary-container text-5xl md:text-6xl font-black uppercase tracking-tighter leading-tight font-headline">{heroFeatured.title}</h3>
-                        <p className="text-on-primary-container/80 max-w-xl mt-6 font-medium italic font-body">{heroFeatured.synopsis || heroFeatured.description || "A masterful documentation of reality distortion."}</p>
-                        <Link to={`/movie/${heroFeatured.id}`} className="inline-block mt-8 border-2 border-on-primary-container px-8 py-3 font-headline font-bold uppercase tracking-widest text-xs hover:bg-on-primary-container hover:text-primary-container transition-all">ACCESS_DATA_RECORDS</Link>
-                    </div>
-                    <div className="w-full md:w-1/3 aspect-video md:aspect-[4/5] bg-black overflow-hidden relative z-10 shadow-2xl skew-x-[-2deg] group-hover:skew-x-0 transition-transform">
-                        <img className="w-full h-full object-cover grayscale contrast-150 group-hover:grayscale-0 group-hover:contrast-100 transition-all duration-700" src={heroFeatured.poster_url || "https://images.unsplash.com/photo-1549488344-c6a617d3dcb1"} />
-                        <div className="absolute inset-0 bg-primary-container/10 mix-blend-overlay"></div>
-                    </div>
-                    <div className="absolute right-0 top-0 text-[8rem] md:text-[12rem] font-black text-on-primary-container/5 leading-none translate-x-12 translate-y-[-2rem] pointer-events-none uppercase font-headline">ANOMALY</div>
-                </div>
-            )}
+            <HeroCarousel movies={featuredMovies} />
 
             {/* Moving Carousels */}
             <section className="space-y-4">
+                <Carousel title="ALL-TIME MASTERPIECES" movies={topRatedMovies} />
                 <Carousel title="IN CINEMAS NOW" movies={nowPlayingMovies} />
                 <Carousel title="NEWLY FEATURED_ANOMALIES" movies={featuredMovies} />
                 <Carousel title="BEST_OF_THE_DECADE" movies={decadeMovies} />

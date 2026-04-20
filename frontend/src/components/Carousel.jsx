@@ -28,7 +28,25 @@ const Carousel = ({ title, movies }) => {
         }
     };
 
-    if (!movies || movies.length === 0) return null;
+    if (!movies || movies.length === 0) {
+        if (title === "ALL-TIME MASTERPIECES") {
+            return (
+                <div className="my-12 relative w-full opacity-50">
+                    <h2 className="text-xl font-headline font-bold text-white uppercase tracking-widest border-l-4 border-primary pl-4 mb-6">{title}</h2>
+                    <div className="flex gap-6 overflow-hidden">
+                        {Array(6).fill(0).map((_, i) => (
+                            <div key={i} className="min-w-[200px] aspect-[2/3] bg-surface-container-low animate-pulse border border-white/5 rounded-xl border-dashed">
+                                <div className="h-full w-full flex items-center justify-center">
+                                    <span className="font-headline text-[10px] tracking-widest opacity-20">INGESTING_RECORDS...</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    }
 
     return (
         <div className="my-12 relative w-full group/carousel">
