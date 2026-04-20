@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/cinevault
     username: postgres
-    password: Ninja#@3.14
+    password: 583218
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -19,6 +19,19 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: 1ms24cs052@msrit.edu
+    password: "iiae oiyi kbsw xdiz"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
 app:
   jwt:
@@ -31,6 +44,10 @@ app:
     api-key: 3b5b8da61073fa7055ba05490f27cc60
     base-url: https://api.themoviedb.org/3
     image-base: https://image.tmdb.org/t/p/w500
+
+  otp:
+    from-email: 1ms24cs052@msrit.edu
+    expiry-minutes: 10
 
 server:
   port: 5000
