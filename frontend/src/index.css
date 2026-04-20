@@ -30,3 +30,17 @@
 .poster-glow:hover {
   box-shadow: 0 0 30px rgba(255, 112, 111, 0.15);
 }
+
+html.retro-scanlines::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+  z-index: 9999;
+  background-size: 100% 3px;
+  pointer-events: none;
+}

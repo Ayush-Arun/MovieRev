@@ -19,21 +19,9 @@ export const Watchlist = () => {
     };
 
     return (
-        <div className="px-2 md:px-6 py-8 max-w-7xl mx-auto space-y-12">
-             <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className="w-3 h-3 bg-primary animate-pulse"></span>
-                        <span className="font-headline uppercase tracking-[0.3em] text-[10px] text-primary font-bold">DIRECTORY: /SYSTEM/USERS/WATCHLIST</span>
-                    </div>
-                    <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none italic font-headline text-on-surface">SAVED_ANOMALIES</h2>
-                    {!user && (
-                        <p className="text-secondary font-headline uppercase tracking-[0.1em] text-[10px] mt-4 border border-secondary/30 p-3 bg-secondary/5 max-w-lg">
-                            GUEST_ACCESS: SIGN IN TO BIND THESE RECORDS TO YOUR PERMANENT INDEX.
-                        </p>
-                    )}
-                </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-6 space-y-6">
+            <h1 className="text-3xl font-bold border-l-4 border-cine-gold pl-3">Your Watchlist</h1>
+            {!user && <div className="p-4 bg-slate-800 border border-cine-gold text-cine-gold rounded">Sign in to save your watchlist permanently across devices!</div>}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 {list.map(item => (

@@ -7,8 +7,14 @@ const TrailerModal = ({ isOpen, onClose, videoUrl }) => {
     if (!isOpen) return null;
     
     // Extract video ID from YouTube URL
-    const videoId = videoUrl?.split('v=')[1]?.split('&')[0];
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    let videoId = null;
+    if (videoUrl) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = videoUrl.match(regExp);
+        videoId = (match && match[2].length === 11) ? match[2] : null;
+    }
+    
+    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : '';
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-10 animate-fade-in" onClick={onClose}>
@@ -19,12 +25,19 @@ const TrailerModal = ({ isOpen, onClose, videoUrl }) => {
                 >
                     <span className="material-symbols-outlined">close</span>
                 </button>
-                <iframe 
-                    src={embedUrl}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                    allowFullScreen
-                ></iframe>
+                {embedUrl ? (
+                    <iframe 
+                        src={embedUrl}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        allowFullScreen
+                    ></iframe>
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-white/50">
+                        <span className="material-symbols-outlined text-6xl mb-4">videocam_off</span>
+                        <p className="font-headline uppercase tracking-widest">Video Unavailable</p>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -39,6 +52,8 @@ const MovieDetail = () => {
     const [isTrailerOpen, setIsTrailerOpen] = useState(false);
     const [isInWatchlist, setIsInWatchlist] = useState(false);
     const [reviewForm, setReviewForm] = useState({ rating: 5, body: '', title: '' });
+    const [isArchived, setIsArchived] = useState(false);
+    const [archiveLoading, setArchiveLoading] = useState(false);
 
     useEffect(() => {
         api.get(`/movies/${id}`).then(res => setMovie(res.data)).catch(() => {});
@@ -80,6 +95,20 @@ const MovieDetail = () => {
         }
     };
 
+    // Check if already archived whenever movie loads or user changes
+    useEffect(() => {
+        if (!movie) return;
+        const params = new URLSearchParams({ movieId: movie.id });
+        if (user?.id) params.append('userId', user.id);
+        else {
+            const sid = localStorage.getItem('cv_session_id');
+            if (sid) params.append('sessionId', sid);
+        }
+        api.get(`/watchlist/check?${params.toString()}`)
+            .then(res => setIsArchived(res.data.archived === true))
+            .catch(() => {});
+    }, [movie, user]);
+
     const submitReview = async (e) => {
         e.preventDefault();
         try {
@@ -95,6 +124,22 @@ const MovieDetail = () => {
             window.location.reload();
         } catch(e) {
             alert('Failed to submit: ' + (e.response?.data || e.message));
+        }
+    };
+
+    const addToWatchlist = async () => {
+        setArchiveLoading(true);
+        try {
+            await api.post('/watchlist', { 
+                movieId: movie.id,
+                userId: user?.id,
+                sessionId: localStorage.getItem('cv_session_id')
+            });
+            setIsArchived(true);
+        } catch(e) {
+            alert('Failed to add to archive');
+        } finally {
+            setArchiveLoading(false);
         }
     };
 
@@ -147,12 +192,40 @@ const MovieDetail = () => {
                     </div>
 
                     <div className="mt-8 flex flex-wrap gap-4">
-                        {movie.trailerUrl && (
+                        {(movie.trailerUrl || movie.trailer_url) ? (
                             <button 
                                 onClick={() => setIsTrailerOpen(true)}
                                 className="px-8 py-3 bg-primary text-black font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-white transition-all hover:scale-105 active:scale-95 rounded-none"
                             >
                                 <span className="material-symbols-outlined">play_circle</span> Watch Trailer
+                            </button>
+                        ) : (
+                            <button 
+                                disabled
+                                className="px-8 py-3 bg-surface-container text-white/40 font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 cursor-not-allowed rounded-none border border-white/10"
+                            >
+                                <span className="material-symbols-outlined">videocam_off</span> Trailer Unavailable
+                            </button>
+                        )}
+                        {isArchived ? (
+                            <button 
+                                disabled
+                                className="px-8 py-3 bg-surface-container border-2 border-white/20 text-white/40 font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 cursor-not-allowed rounded-none opacity-70"
+                            >
+                                <span className="material-symbols-outlined text-green-500">bookmark_added</span>
+                                <span>Archived</span>
+                                <span className="text-green-500 font-bold">✓</span>
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={addToWatchlist}
+                                disabled={archiveLoading}
+                                className={`px-8 py-3 bg-transparent border-2 border-primary text-primary font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-primary hover:text-black transition-all hover:scale-105 active:scale-95 rounded-none ${
+                                    archiveLoading ? 'opacity-50 cursor-wait' : ''
+                                }`}
+                            >
+                                <span className="material-symbols-outlined">{archiveLoading ? 'hourglass_top' : 'bookmark_add'}</span>
+                                {archiveLoading ? 'Archiving...' : 'Add to Archive'}
                             </button>
                         )}
                         <button 
@@ -174,14 +247,20 @@ const MovieDetail = () => {
                             <h4 className="text-[10px] font-headline uppercase tracking-widest text-primary mb-3">Streaming On</h4>
                             <div className="flex flex-wrap gap-4">
                                 {movie.ottPlatforms.map(platform => (
-                                    <div key={platform.id} className="flex flex-col items-center gap-1 group">
+                                    <a 
+                                        key={platform.id} 
+                                        href={`https://www.google.com/search?q=watch+${encodeURIComponent(movie.title)}+on+${encodeURIComponent(platform.name)}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center gap-1 group"
+                                    >
                                         <img 
                                             src={platform.logoUrl} 
                                             alt={platform.name} 
-                                            className="w-10 h-10 rounded-lg group-hover:scale-110 transition-transform shadow-lg"
+                                            className="w-10 h-10 rounded-lg group-hover:scale-110 transition-transform shadow-lg cursor-pointer"
                                         />
                                         <span className="text-[8px] text-white/40 uppercase font-headline hidden group-hover:block">{platform.name}</span>
-                                    </div>
+                                    </a>
                                 ))}
                             </div>
                         </div>
@@ -278,7 +357,7 @@ const MovieDetail = () => {
             <TrailerModal 
                 isOpen={isTrailerOpen} 
                 onClose={() => setIsTrailerOpen(false)} 
-                videoUrl={movie?.trailerUrl} 
+                videoUrl={movie?.trailerUrl || movie?.trailer_url} 
             />
         </div>
     );

@@ -1,24 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
 
 const Navbar = ({ onOpenAuth }) => {
     const { user, logout, isAdmin } = useAuth();
     const location = useLocation();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Helper to check active state
     const isActive = (path) => location.pathname === path;
 
     return (
         <>
+            {/* Overlay for sidebar */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
+                    onClick={() => setIsSidebarOpen(false)}
+                ></div>
+            )}
+
             {/* Desktop Side Navbar */}
-            <aside className="h-full w-64 fixed left-0 top-0 bg-[#0e0e0e] flex-col py-8 px-6 z-40 hidden md:flex border-r border-white/5">
+            <aside className={`h-full w-64 fixed left-0 top-0 bg-[#0e0e0e] flex-col py-8 px-6 z-50 flex border-r border-white/5 transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="mb-12">
                     <h1 className="text-2xl font-black text-[#f3ffca] tracking-tighter uppercase font-headline">GLITCH_NOIR</h1>
                     <p className="font-headline uppercase tracking-[0.1em] text-[10px] text-white/40">BIOLOGICAL_TERMINAL_V1</p>
                 </div>
 
-                <nav className="flex-1 space-y-4">
+                <nav className="flex-1 space-y-4" onClick={() => setIsSidebarOpen(false)}>
                     <Link to="/browse" className={`flex items-center gap-3 font-headline uppercase tracking-[0.1em] text-sm transition-all duration-75 ${isActive('/browse') ? 'text-[#f3ffca] border-l-2 border-[#f3ffca] pl-4' : 'text-white/40 hover:bg-[#f3ffca]/10 hover:text-[#f3ffca] pl-4'}`}>
                         <span className="material-symbols-outlined text-lg">theaters</span>
                         <span>CRITICISM</span>
@@ -46,17 +55,18 @@ const Navbar = ({ onOpenAuth }) => {
                         </Link>
                     )}
                 </nav>
-
-                <button className="bg-primary-container text-on-primary-container font-headline font-bold uppercase py-3 px-4 tracking-widest text-xs flex items-center justify-between group active:scale-95 transition-transform">
-                    LOG_ANOMALY
-                    <span className="material-symbols-outlined">add</span>
-                </button>
             </aside>
 
             {/* Top Navbar */}
-            <header className="fixed top-0 w-full flex justify-between items-center px-6 md:px-10 py-4 bg-[#0e0e0e]/80 backdrop-blur-xl z-50 md:left-64 md:w-[calc(100%-16rem)] shadow-[0_0_20px_rgba(243,255,202,0.05)] border-b border-white/5">
-                <div className="flex items-center gap-8">
-                    <Link to="/" className="text-3xl font-black italic text-[#f3ffca] tracking-[-0.05em] md:hidden font-headline">GN</Link>
+            <header className="fixed top-0 w-full flex justify-between items-center px-6 md:px-10 py-4 bg-[#0e0e0e]/80 backdrop-blur-xl z-30 shadow-[0_0_20px_rgba(243,255,202,0.05)] border-b border-white/5">
+                <div className="flex items-center gap-6">
+                    <button 
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="text-[#f3ffca] hover:text-[#ff706f] transition-colors p-2 -ml-2"
+                    >
+                        <span className="material-symbols-outlined text-3xl">menu</span>
+                    </button>
+                    <Link to="/" className="text-3xl font-black italic text-[#f3ffca] tracking-[-0.05em] font-headline hidden sm:block">GN</Link>
                     
                     <div className="hidden lg:flex items-center gap-6">
                         <Link to="/" className="font-headline font-bold uppercase tracking-widest text-white/60 hover:skew-x-2 hover:text-[#ff706f] transition-all">SENSORS</Link>
@@ -105,25 +115,6 @@ const Navbar = ({ onOpenAuth }) => {
                 </div>
             </header>
 
-            {/* Mobile Bottom Navbar */}
-            <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#0e0e0e]/90 backdrop-blur-xl flex items-center justify-around py-4 z-50 border-t border-white/10">
-                <Link to="/browse" className={`flex flex-col items-center gap-1 ${isActive('/browse') ? 'text-[#f3ffca]' : 'text-white/40'}`}>
-                    <span className="material-symbols-outlined">theaters</span>
-                    <span className="text-[8px] font-headline font-bold">CRITICISM</span>
-                </Link>
-                <Link to="/showtimes" className={`flex flex-col items-center gap-1 ${isActive('/showtimes') ? 'text-[#f3ffca]' : 'text-white/40'}`}>
-                    <span className="material-symbols-outlined">new_releases</span>
-                    <span className="text-[8px] font-headline font-bold">RELEASES</span>
-                </Link>
-                <Link to="/watchlist" className={`flex flex-col items-center gap-1 ${isActive('/watchlist') ? 'text-[#f3ffca]' : 'text-white/40'}`}>
-                    <span className="material-symbols-outlined">history</span>
-                    <span className="text-[8px] font-headline font-bold">ARCHIVE</span>
-                </Link>
-                <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive('/profile') ? 'text-[#f3ffca]' : 'text-white/40'}`}>
-                    <span className="material-symbols-outlined">settings</span>
-                    <span className="text-[8px] font-headline font-bold">SETTINGS</span>
-                </Link>
-            </nav>
         </>
     );
 };

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/api/watchlist")
@@ -36,24 +37,25 @@ public class WatchlistController {
     }
 
     @GetMapping("/check")
-    public ResponseEntity<Boolean> checkInWatchlist(@RequestParam Long movieId,
-                                                   @RequestParam(required = false) Long userId,
-                                                   @RequestParam(required = false) String sessionId) {
-        String sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND (";
-        Object param = null;
+    public ResponseEntity<Map<String, Object>> checkInWatchlist(
+            @RequestParam Long movieId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String sessionId) {
+
+        String sql;
+        Object param;
 
         if (userId != null) {
-            sql += "user_id = ?)";
-            param = userId;
+            sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND user_id = ?";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, userId);
+            return ResponseEntity.ok(Collections.singletonMap("archived", count != null && count > 0));
         } else if (sessionId != null) {
-            sql += "session_id = ?)";
-            param = UUID.fromString(sessionId);
+            sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND session_id = ?";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, UUID.fromString(sessionId));
+            return ResponseEntity.ok(Collections.singletonMap("archived", count != null && count > 0));
         } else {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.ok(Collections.singletonMap("archived", false));
         }
-
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, param);
-        return ResponseEntity.ok(count != null && count > 0);
     }
 
     @PostMapping
