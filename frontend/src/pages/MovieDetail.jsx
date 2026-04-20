@@ -200,14 +200,20 @@ const MovieDetail = () => {
                             <h4 className="text-[10px] font-headline uppercase tracking-widest text-primary mb-3">Streaming On</h4>
                             <div className="flex flex-wrap gap-4">
                                 {movie.ottPlatforms.map(platform => (
-                                    <div key={platform.id} className="flex flex-col items-center gap-1 group">
+                                    <a 
+                                        key={platform.id} 
+                                        href={`https://www.google.com/search?q=watch+${encodeURIComponent(movie.title)}+on+${encodeURIComponent(platform.name)}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex flex-col items-center gap-1 group"
+                                    >
                                         <img 
                                             src={platform.logoUrl} 
                                             alt={platform.name} 
-                                            className="w-10 h-10 rounded-lg group-hover:scale-110 transition-transform shadow-lg"
+                                            className="w-10 h-10 rounded-lg group-hover:scale-110 transition-transform shadow-lg cursor-pointer"
                                         />
                                         <span className="text-[8px] text-white/40 uppercase font-headline hidden group-hover:block">{platform.name}</span>
-                                    </div>
+                                    </a>
                                 ))}
                             </div>
                         </div>

@@ -55,11 +55,6 @@ const Navbar = ({ onOpenAuth }) => {
                         </Link>
                     )}
                 </nav>
-
-                <button className="bg-primary-container text-on-primary-container font-headline font-bold uppercase py-3 px-4 tracking-widest text-xs flex items-center justify-between group active:scale-95 transition-transform">
-                    LOG_ANOMALY
-                    <span className="material-symbols-outlined">add</span>
-                </button>
             </aside>
 
             {/* Top Navbar */}

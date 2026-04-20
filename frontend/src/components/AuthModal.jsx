@@ -4,7 +4,7 @@ import api from '../api/axios';
 
 const AuthModal = ({ isOpen, onClose }) => {
     const { login, register } = useAuth();
-    const [mode, setMode] = useState('login'); // 'login' | 'register' | 'otp'
+    const [mode, setMode] = useState('login'); // 'login' | 'register' | 'otp' | 'forgot_password' | 'reset_password'
     const [form, setForm] = useState({ email: '', password: '', username: '', displayName: '' });
     const [otpEmail, setOtpEmail] = useState('');
     const [otpCode, setOtpCode] = useState('');
@@ -31,7 +31,6 @@ const AuthModal = ({ isOpen, onClose }) => {
         try {
             if (mode === 'login') {
                 const result = await login(form.email, form.password);
-                // login() in AuthContext may return otp_required for unverified accounts
                 if (result?.status === 'otp_required') {
                     setOtpEmail(result.email);
                     setMode('otp');
@@ -39,7 +38,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                 } else {
                     onClose();
                 }
-            } else {
+            } else if (mode === 'register') {
                 const result = await register(form.email, form.username, form.password, form.displayName);
                 if (result?.status === 'otp_required') {
                     setOtpEmail(result.email);
@@ -48,15 +47,17 @@ const AuthModal = ({ isOpen, onClose }) => {
                 } else {
                     onClose();
                 }
+            } else if (mode === 'forgot_password') {
+                await api.post('/auth/forgot-password', { email: form.email });
+                setOtpEmail(form.email);
+                setMode('reset_password');
+                startResendCooldown();
             }
         } catch (err) {
             let msg = 'An error occurred';
             if (err.response?.data) {
-                if (typeof err.response.data === 'string') msg = err.response.data;
-                else if (err.response.data.message) msg = err.response.data.message;
-            } else if (err.message) {
-                msg = err.message;
-            }
+                msg = typeof err.response.data === 'string' ? err.response.data : err.response.data.message || msg;
+            } else if (err.message) msg = err.message;
             setError(msg);
         } finally {
             setLoading(false);
@@ -68,16 +69,20 @@ const AuthModal = ({ isOpen, onClose }) => {
         setError(null);
         setLoading(true);
         try {
-            const res = await api.post('/auth/verify-otp', { email: otpEmail, code: otpCode });
-            // Save tokens from successful OTP verification
-            if (res.data.access_token) {
-                localStorage.setItem('access_token', res.data.access_token);
-                localStorage.setItem('refresh_token', res.data.refresh_token);
-                // Trigger auth context reload
-                window.dispatchEvent(new Event('auth_verified'));
+            if (mode === 'reset_password') {
+                await api.post('/auth/reset-password', { email: otpEmail, code: otpCode, newPassword: form.password });
+                setMode('login');
+                alert('Password reset successfully. You can now login.');
+            } else {
+                const res = await api.post('/auth/verify-otp', { email: otpEmail, code: otpCode });
+                if (res.data.access_token) {
+                    localStorage.setItem('access_token', res.data.access_token);
+                    localStorage.setItem('refresh_token', res.data.refresh_token);
+                    window.dispatchEvent(new Event('auth_verified'));
+                }
+                onClose();
+                window.location.reload();
             }
-            onClose();
-            window.location.reload(); // Refresh to load user state
         } catch (err) {
             const msg = err.response?.data || err.message || 'Invalid code';
             setError(typeof msg === 'string' ? msg : 'Invalid code. Please try again.');
@@ -90,7 +95,8 @@ const AuthModal = ({ isOpen, onClose }) => {
         if (resendCooldown > 0) return;
         setError(null);
         try {
-            await api.post('/auth/resend-otp', { email: otpEmail });
+            const endpoint = mode === 'reset_password' ? '/auth/forgot-password' : '/auth/resend-otp';
+            await api.post(endpoint, { email: otpEmail });
             startResendCooldown();
             setError(null);
         } catch (err) {
@@ -104,22 +110,23 @@ const AuthModal = ({ isOpen, onClose }) => {
         setOtpCode('');
     };
 
-    // ── OTP VERIFICATION SCREEN ─────────────────────────────────────────────
-    if (mode === 'otp') {
+    // ── OTP VERIFICATION OR PASSWORD RESET SCREEN ───────────────────────────
+    if (mode === 'otp' || mode === 'reset_password') {
         return (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
                 <div className="bg-[#121212] border border-white/10 w-full max-w-md rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.8)] relative p-8">
                     <button onClick={onClose} className="absolute right-4 top-4 text-white/50 hover:text-white transition-colors">✕</button>
 
-                    {/* Icon */}
                     <div className="flex justify-center mb-6">
                         <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
-                            <span className="material-symbols-outlined text-primary text-3xl">mark_email_unread</span>
+                            <span className="material-symbols-outlined text-primary text-3xl">
+                                {mode === 'reset_password' ? 'lock_reset' : 'mark_email_unread'}
+                            </span>
                         </div>
                     </div>
 
                     <h2 className="text-2xl font-headline font-bold mb-2 text-center text-white tracking-widest uppercase">
-                        VERIFY_IDENTITY
+                        {mode === 'reset_password' ? 'RESET_PASSWORD' : 'VERIFY_IDENTITY'}
                     </h2>
                     <p className="text-white/40 text-center text-xs font-headline uppercase tracking-widest mb-1">
                         Code sent to
@@ -135,7 +142,6 @@ const AuthModal = ({ isOpen, onClose }) => {
                     )}
 
                     <form onSubmit={handleOtpSubmit} className="flex flex-col gap-5">
-                        {/* OTP 6-digit input */}
                         <div>
                             <label className="block text-[10px] font-headline uppercase tracking-widest text-white/40 mb-3 text-center">
                                 Enter 6-digit code
@@ -154,12 +160,23 @@ const AuthModal = ({ isOpen, onClose }) => {
                             />
                         </div>
 
+                        {mode === 'reset_password' && (
+                            <input
+                                type="password"
+                                placeholder="New Password"
+                                required
+                                minLength={8}
+                                className="bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-md p-4 focus:outline-none focus:border-primary focus:bg-white/10 transition-all font-body text-center"
+                                onChange={e => setForm({ ...form, password: e.target.value })}
+                            />
+                        )}
+
                         <button
                             type="submit"
-                            disabled={loading || otpCode.length !== 6}
+                            disabled={loading || otpCode.length !== 6 || (mode === 'reset_password' && form.password.length < 8)}
                             className="bg-primary hover:bg-primary/90 text-on-primary font-headline tracking-widest text-sm p-4 rounded-md transition-all uppercase shadow-[0_0_20px_rgba(255,215,0,0.3)] hover:shadow-[0_0_30px_rgba(255,215,0,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? 'VERIFYING...' : 'CONFIRM_CODE'}
+                            {loading ? 'PROCESSING...' : (mode === 'reset_password' ? 'UPDATE_PASSWORD' : 'CONFIRM_CODE')}
                         </button>
                     </form>
 
@@ -178,10 +195,10 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                     <div className="mt-4 text-center">
                         <button
-                            onClick={() => switchMode('register')}
+                            onClick={() => switchMode('login')}
                             className="text-white/30 hover:text-white/60 text-xs font-headline uppercase tracking-widest transition-colors"
                         >
-                            ← Back to Register
+                            ← Back to Login
                         </button>
                     </div>
                 </div>
@@ -189,13 +206,13 @@ const AuthModal = ({ isOpen, onClose }) => {
         );
     }
 
-    // ── LOGIN / REGISTER SCREEN ─────────────────────────────────────────────
+    // ── LOGIN / REGISTER / FORGOT PASSWORD SCREEN ───────────────────────────
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
             <div className="bg-[#121212] border border-white/10 w-full max-w-md rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.8)] relative p-8">
                 <button onClick={onClose} className="absolute right-4 top-4 text-white/50 hover:text-white transition-colors">✕</button>
                 <h2 className="text-2xl font-headline font-bold mb-6 text-center text-white tracking-widest uppercase">
-                    {mode === 'login' ? 'WELCOME_BACK' : 'CREATE_ACCOUNT'}
+                    {mode === 'login' ? 'WELCOME_BACK' : mode === 'register' ? 'CREATE_ACCOUNT' : 'RECOVER_ACCESS'}
                 </h2>
 
                 {error && (
@@ -211,6 +228,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                         required
                         className="bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-md p-4 focus:outline-none focus:border-primary focus:bg-white/10 transition-all font-body"
                         onChange={e => setForm({ ...form, email: e.target.value })}
+                        value={form.email}
                     />
 
                     {mode === 'register' && (
@@ -233,14 +251,17 @@ const AuthModal = ({ isOpen, onClose }) => {
                         </>
                     )}
 
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        required
-                        minLength={8}
-                        className="bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-md p-4 focus:outline-none focus:border-primary focus:bg-white/10 transition-all font-body"
-                        onChange={e => setForm({ ...form, password: e.target.value })}
-                    />
+                    {mode !== 'forgot_password' && (
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            required
+                            minLength={8}
+                            className="bg-white/5 border border-white/10 text-white placeholder-white/40 rounded-md p-4 focus:outline-none focus:border-primary focus:bg-white/10 transition-all font-body"
+                            onChange={e => setForm({ ...form, password: e.target.value })}
+                            value={form.password}
+                        />
+                    )}
 
                     <button
                         type="submit"
@@ -248,17 +269,25 @@ const AuthModal = ({ isOpen, onClose }) => {
                         className="bg-primary hover:bg-primary/90 text-on-primary font-headline tracking-widest text-sm p-4 rounded-md mt-4 transition-all uppercase shadow-[0_0_20px_rgba(255,215,0,0.3)] hover:shadow-[0_0_30px_rgba(255,215,0,0.5)] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {loading
-                            ? (mode === 'login' ? 'AUTHENTICATING...' : 'SENDING OTP...')
-                            : (mode === 'login' ? 'COMMENCE_SESSION' : 'INITIALIZE_USER')
+                            ? (mode === 'forgot_password' ? 'TRANSMITTING...' : 'AUTHENTICATING...')
+                            : (mode === 'forgot_password' ? 'SEND_RECOVERY_CODE' : mode === 'login' ? 'COMMENCE_SESSION' : 'INITIALIZE_USER')
                         }
                     </button>
                 </form>
 
-                <div className="mt-8 text-center text-white/50 text-sm font-headline tracking-wider uppercase flex flex-col gap-2">
-                    {mode === 'login' ? (
+                <div className="mt-8 text-center text-white/50 text-sm font-headline tracking-wider uppercase flex flex-col gap-3">
+                    {mode === 'login' && (
+                        <button onClick={() => switchMode('forgot_password')} className="text-white/40 hover:text-white transition-colors text-xs tracking-widest mb-2">FORGOT_PASSWORD?</button>
+                    )}
+                    
+                    {mode !== 'register' ? (
                         <><span>UNREGISTERED_ENTITY?</span> <button onClick={() => switchMode('register')} className="text-primary hover:text-white transition-colors">INITIALIZE_NOW</button></>
                     ) : (
                         <><span>EXISTING_ENTITY?</span> <button onClick={() => switchMode('login')} className="text-primary hover:text-white transition-colors">RESUME_SESSION</button></>
+                    )}
+                    
+                    {mode === 'forgot_password' && (
+                        <button onClick={() => switchMode('login')} className="text-white/40 hover:text-white transition-colors mt-2 text-xs tracking-widest">← BACK_TO_LOGIN</button>
                     )}
                 </div>
             </div>

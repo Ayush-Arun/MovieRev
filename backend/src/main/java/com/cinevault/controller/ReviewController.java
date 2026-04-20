@@ -53,4 +53,27 @@ public class ReviewController {
         jdbcTemplate.update("DELETE FROM reviews WHERE id = ?", id);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/stats")
+    public ResponseEntity<?> getUserStats(@RequestParam(required = false) Long userId, @RequestParam(required = false) String sessionId) {
+        if (userId == null && sessionId == null) return ResponseEntity.badRequest().body("Must provide userId or sessionId");
+        String sql;
+        Object param;
+        if (userId != null) {
+            sql = "SELECT COUNT(*) as total_reviews, COALESCE(AVG(rating), 0) as avg_rating FROM reviews WHERE user_id = ?";
+            param = userId;
+        } else {
+            sql = "SELECT COUNT(*) as total_reviews, COALESCE(AVG(rating), 0) as avg_rating FROM reviews WHERE session_id = ?";
+            param = UUID.fromString(sessionId);
+        }
+        try {
+            Map<String, Object> stats = jdbcTemplate.queryForMap(sql, param);
+            return ResponseEntity.ok(Map.of(
+                "totalReviews", ((Number) stats.get("total_reviews")).intValue(),
+                "avgRating", Math.round(((Number) stats.get("avg_rating")).doubleValue() * 10.0) / 10.0
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to get stats: " + e.getMessage());
+        }
+    }
 }
