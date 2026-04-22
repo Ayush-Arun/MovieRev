@@ -20,6 +20,18 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: 1ms24cs052@msrit.edu
+    password: "iiae oiyi kbsw xdiz"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 app:
   jwt:
     access-secret: "Zl9a7Qp2w3XkGk6jQ8F0Fh5QbFzU9o4t3a6vZqP1WmE="

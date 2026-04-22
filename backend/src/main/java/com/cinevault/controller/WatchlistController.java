@@ -39,21 +39,22 @@ public class WatchlistController {
     public ResponseEntity<Boolean> checkInWatchlist(@RequestParam Long movieId,
                                                    @RequestParam(required = false) Long userId,
                                                    @RequestParam(required = false) String sessionId) {
-        String sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND (";
-        Object param = null;
-
-        if (userId != null) {
-            sql += "user_id = ?)";
-            param = userId;
+        if (userId != null && sessionId != null) {
+            // Check both user-owned AND any lingering guest session entry (handles failed merge scenario)
+            String sql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND (user_id = ? OR session_id = ?)";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, userId, UUID.fromString(sessionId));
+            return ResponseEntity.ok(count != null && count > 0);
+        } else if (userId != null) {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND user_id = ?", Integer.class, movieId, userId);
+            return ResponseEntity.ok(count != null && count > 0);
         } else if (sessionId != null) {
-            sql += "session_id = ?)";
-            param = UUID.fromString(sessionId);
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND session_id = ?", Integer.class, movieId, UUID.fromString(sessionId));
+            return ResponseEntity.ok(count != null && count > 0);
         } else {
             return ResponseEntity.badRequest().build();
         }
-
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, movieId, param);
-        return ResponseEntity.ok(count != null && count > 0);
     }
 
     @PostMapping
@@ -62,28 +63,39 @@ public class WatchlistController {
         Object userIdObj = body.get("userId");
         Object sessionIdObj = body.get("sessionId");
 
-        // Check for duplicates before inserting
-        String checkSql = "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND (";
-        Object checkParam = null;
-        if (userIdObj != null) {
-            checkSql += "user_id = ?)";
-            checkParam = userIdObj;
-        } else if (sessionIdObj != null) {
-            checkSql += "session_id = ?)";
-            checkParam = UUID.fromString((String)sessionIdObj);
-        } else {
+        if (userIdObj == null && sessionIdObj == null) {
             return ResponseEntity.badRequest().body("User or Session ID required");
         }
 
-        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, movieId, checkParam);
-        if (count != null && count > 0) {
-            return ResponseEntity.ok("Already in watchlist");
+        if (userIdObj != null) {
+            // Logged-in user: first clean up any stale guest entry for this movie+session (failed merge)
+            if (sessionIdObj != null) {
+                try {
+                    jdbcTemplate.update("DELETE FROM watchlist WHERE movie_id = ? AND session_id = ? AND user_id IS NULL",
+                            movieId, UUID.fromString((String) sessionIdObj));
+                } catch (Exception ignored) {}
+            }
+            // Check if this user already has this movie
+            Integer userCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND user_id = ?",
+                    Integer.class, movieId, userIdObj);
+            if (userCount != null && userCount > 0) {
+                return ResponseEntity.ok("Already in watchlist");
+            }
+        } else {
+            // Guest user: check for session duplicate
+            Integer sessCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM watchlist WHERE movie_id = ? AND session_id = ?",
+                    Integer.class, movieId, UUID.fromString((String) sessionIdObj));
+            if (sessCount != null && sessCount > 0) {
+                return ResponseEntity.ok("Already in watchlist");
+            }
         }
 
         String sql = "INSERT INTO watchlist (movie_id, user_id, session_id) VALUES (?, ?, ?)";
         try {
             jdbcTemplate.update(sql, movieId, userIdObj,
-                    sessionIdObj != null ? UUID.fromString((String)sessionIdObj) : null);
+                    sessionIdObj != null ? UUID.fromString((String) sessionIdObj) : null);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

@@ -303,12 +303,13 @@ public class TmdbSyncService {
                 if (india != null && india.getFlatrate() != null) {
                     movie.getOttPlatforms().clear();
                     for (TmdbWatchProvidersDto.Provider p : india.getFlatrate()) {
+                        String logoUrl = "https://image.tmdb.org/t/p/w92" + p.getLogoPath();
                         OttPlatform platform = ottPlatformRepository.findByTmdbProviderId(p.getProviderId())
-                            .orElseGet(() -> ottPlatformRepository.save(new OttPlatform(
-                                p.getProviderId(), 
-                                p.getProviderName(), 
-                                "https://image.tmdb.org/t/p/original" + p.getLogoPath()
-                            )));
+                            .orElseGet(() -> new OttPlatform(p.getProviderId(), p.getProviderName(), logoUrl));
+                        // Always update logo URL to use the correct size
+                        platform.setLogoUrl(logoUrl);
+                        platform.setName(p.getProviderName());
+                        ottPlatformRepository.save(platform);
                         movie.getOttPlatforms().add(platform);
                     }
                     movieRepository.save(movie);

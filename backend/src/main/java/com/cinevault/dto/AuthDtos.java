@@ -22,6 +22,21 @@ public class AuthDtos {
             String refreshToken
     ) {}
 
+    public record VerifyOtpRequest(
+            String email,
+            String otp
+    ) {}
+
+    public record ForgotPasswordRequest(
+            String email
+    ) {}
+
+    public record ResetPasswordRequest(
+            String email,
+            String otp,
+            String newPassword
+    ) {}
+
     public record AuthResponse(
             UserDto user,
             String accessToken,
@@ -33,6 +48,7 @@ public class AuthDtos {
             String email,
             String username,
             String displayName,
+            String avatarUrl,
             String role
     ) {}
 }

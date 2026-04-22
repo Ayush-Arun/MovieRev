@@ -1,30 +1,47 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useSidebar } from '../context/SidebarContext';
 
 const TrailerModal = ({ isOpen, onClose, videoUrl }) => {
+    const { isOpen: sidebarOpen } = useSidebar();
+    const iframeRef = useRef(null);
+
+    // Pause YouTube when sidebar opens
+    useEffect(() => {
+        if (sidebarOpen && iframeRef.current) {
+            try {
+                iframeRef.current.contentWindow.postMessage(
+                    JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),
+                    '*'
+                );
+            } catch (e) {}
+        }
+    }, [sidebarOpen]);
+
     if (!isOpen) return null;
-    
-    // Extract video ID from YouTube URL
+
     const videoId = videoUrl?.split('v=')[1]?.split('&')[0];
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    // enablejsapi=1 is required for postMessage control
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-10 animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-10" onClick={onClose}>
             <div className="relative w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl" onClick={e => e.stopPropagation()}>
-                <button 
+                <button
                     onClick={onClose}
                     className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-primary transition-colors hover:scale-110 active:scale-95"
                 >
                     <span className="material-symbols-outlined">close</span>
                 </button>
-                <iframe 
+                <iframe
+                    ref={iframeRef}
                     src={embedUrl}
                     className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
-                ></iframe>
+                />
             </div>
         </div>
     );
@@ -45,13 +62,12 @@ const MovieDetail = () => {
         api.get(`/movies/${id}/cast`).then(res => setCast(res.data)).catch(() => {});
         api.get(`/movies/${id}/reviews`).then(res => setReviews(res.data)).catch(() => {});
         
-        // Check watchlist status
+        // Check watchlist status – always pass sessionId so backend can catch stale guest entries
         const sessionId = localStorage.getItem('cv_session_id') || crypto.randomUUID();
         if (!localStorage.getItem('cv_session_id')) localStorage.setItem('cv_session_id', sessionId);
         
-        const checkUrl = user 
-            ? `/watchlist/check?movieId=${id}&userId=${user.id}` 
-            : `/watchlist/check?movieId=${id}&sessionId=${sessionId}`;
+        let checkUrl = `/watchlist/check?movieId=${id}&sessionId=${sessionId}`;
+        if (user) checkUrl += `&userId=${user.id}`;
             
         api.get(checkUrl).then(res => setIsInWatchlist(res.data)).catch(() => {});
     }, [id, user]);
@@ -60,17 +76,23 @@ const MovieDetail = () => {
         try {
             const sessionId = localStorage.getItem('cv_session_id');
             if (isInWatchlist) {
+                // Try removing by userId first, fall back to sessionId
                 const fetchUrl = user ? `/watchlist?userId=${user.id}` : `/watchlist?sessionId=${sessionId}`;
                 const res = await api.get(fetchUrl);
                 const item = res.data.find(x => parseInt(x.movie_id) === parseInt(id));
-                if (item) {
+                // If not found by user, try by session (stale guest entry)
+                if (!item && user) {
+                    const sessRes = await api.get(`/watchlist?sessionId=${sessionId}`);
+                    const sessItem = sessRes.data.find(x => parseInt(x.movie_id) === parseInt(id));
+                    if (sessItem) await api.delete(`/watchlist/${sessItem.id}`);
+                } else if (item) {
                     await api.delete(`/watchlist/${item.id}`);
-                    setIsInWatchlist(false);
                 }
+                setIsInWatchlist(false);
             } else {
                 await api.post('/watchlist', {
                     movieId: parseInt(id),
-                    userId: user?.id,
+                    userId: user?.id || null,
                     sessionId: sessionId
                 });
                 setIsInWatchlist(true);
@@ -147,7 +169,7 @@ const MovieDetail = () => {
                     </div>
 
                     <div className="mt-8 flex flex-wrap gap-4">
-                        {movie.trailerUrl && (
+                        { (movie.trailerUrl || movie.trailer_url) && (
                             <button 
                                 onClick={() => setIsTrailerOpen(true)}
                                 className="px-8 py-3 bg-primary text-black font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 hover:bg-white transition-all hover:scale-105 active:scale-95 rounded-none"
@@ -169,20 +191,59 @@ const MovieDetail = () => {
                         </button>
                     </div>
 
-                    {movie.ottPlatforms && movie.ottPlatforms.length > 0 && (
-                        <div className="mt-8 p-4 bg-white/5 border border-white/10 border-l-4 border-l-primary max-w-md">
-                            <h4 className="text-[10px] font-headline uppercase tracking-widest text-primary mb-3">Streaming On</h4>
-                            <div className="flex flex-wrap gap-4">
-                                {movie.ottPlatforms.map(platform => (
-                                    <div key={platform.id} className="flex flex-col items-center gap-1 group">
-                                        <img 
-                                            src={platform.logoUrl} 
-                                            alt={platform.name} 
-                                            className="w-10 h-10 rounded-lg group-hover:scale-110 transition-transform shadow-lg"
-                                        />
-                                        <span className="text-[8px] text-white/40 uppercase font-headline hidden group-hover:block">{platform.name}</span>
-                                    </div>
-                                ))}
+                    {(movie.ottPlatforms || movie.ott_platforms) && (movie.ottPlatforms || movie.ott_platforms).length > 0 && (
+                        <div className="mt-8 p-5 bg-white/5 border border-white/10 border-l-4 border-l-primary max-w-xl">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="material-symbols-outlined text-primary text-[16px]">play_circle</span>
+                                <h4 className="text-[10px] font-headline uppercase tracking-widest text-primary">Streaming On</h4>
+                            </div>
+                            <div className="flex flex-wrap gap-5 items-center">
+                                {(movie.ottPlatforms || movie.ott_platforms).map(platform => {
+                                    const pName = platform.name?.toLowerCase() || '';
+                                    const titleEncoded = encodeURIComponent(movie.title);
+                                    let redirectUrl = `https://google.com/search?q=${encodeURIComponent(movie.title + ' watch on ' + platform.name)}`;
+                                    if (pName.includes('netflix')) redirectUrl = `https://www.netflix.com/search?q=${titleEncoded}`;
+                                    else if (pName.includes('prime') || pName.includes('amazon')) redirectUrl = `https://www.primevideo.com/search/ref=atv_sr_sug_1?phrase=${titleEncoded}`;
+                                    else if (pName.includes('hotstar') || pName.includes('disney')) redirectUrl = `https://www.hotstar.com/in/search?q=${titleEncoded}`;
+                                    else if (pName.includes('jio')) redirectUrl = `https://www.jiocinema.com/search?query=${titleEncoded}`;
+                                    else if (pName.includes('hulu')) redirectUrl = `https://www.hulu.com/search?q=${titleEncoded}`;
+                                    else if (pName.includes('apple')) redirectUrl = `https://tv.apple.com/search?q=${titleEncoded}`;
+                                    else if (pName.includes('zee5')) redirectUrl = `https://www.zee5.com/search?q=${titleEncoded}`;
+                                    else if (pName.includes('sonyliv') || pName.includes('sony')) redirectUrl = `https://www.sonyliv.com/search?q=${titleEncoded}`;
+                                    else if (pName.includes('mubi')) redirectUrl = `https://mubi.com/search?query=${titleEncoded}`;
+
+                                    const logoSrc = platform.logoUrl || platform.logo_url || null;
+
+                                    return (
+                                        <a 
+                                            href={redirectUrl} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            key={platform.id || platform.tmdb_provider_id || pName} 
+                                            className="flex flex-col items-center gap-2 group"
+                                            title={`Watch on ${platform.name}`}
+                                        >
+                                            {logoSrc ? (
+                                                <img 
+                                                    src={logoSrc}
+                                                    alt={platform.name} 
+                                                    className="w-12 h-12 rounded-xl group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(202,253,0,0.4)] transition-all shadow-lg cursor-pointer object-contain bg-white/5"
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.nextSibling.style.display = 'flex';
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <div 
+                                                className="w-12 h-12 rounded-xl bg-white/10 items-center justify-center text-white/60 text-[9px] font-headline uppercase text-center p-1 leading-tight cursor-pointer group-hover:bg-primary/20 transition-colors"
+                                                style={{ display: logoSrc ? 'none' : 'flex' }}
+                                            >
+                                                {platform.name?.substring(0, 6)}
+                                            </div>
+                                            <span className="text-[9px] text-white/40 uppercase font-headline tracking-wider group-hover:text-primary transition-colors text-center max-w-[60px] leading-tight">{platform.name}</span>
+                                        </a>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -278,7 +339,7 @@ const MovieDetail = () => {
             <TrailerModal 
                 isOpen={isTrailerOpen} 
                 onClose={() => setIsTrailerOpen(false)} 
-                videoUrl={movie?.trailerUrl} 
+                videoUrl={movie?.trailerUrl || movie?.trailer_url} 
             />
         </div>
     );

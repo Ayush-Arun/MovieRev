@@ -15,6 +15,7 @@ public class CustomUserDetails implements UserDetails {
     private String username;
     private String password;
     private String role;
+    private boolean verified;
     private Collection<? extends GrantedAuthority> authorities;
 
     public CustomUserDetails(User user) {
@@ -23,7 +24,7 @@ public class CustomUserDetails implements UserDetails {
         this.username = user.getUsername();
         this.password = user.getPasswordHash();
         this.role = user.getRole();
-        // Standardize Roles with "ROLE_" convention for Spring Security if needed, or stick to raw strings.
+        this.verified = Boolean.TRUE.equals(user.getIsVerified());
         this.authorities = Collections.singletonList(new SimpleGrantedAuthority(role.toUpperCase()));
     }
 
@@ -49,7 +50,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return verified; // Blocks unverified users at Spring Security level
     }
 
     @Override
@@ -59,7 +60,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return verified; // Only verified users can authenticate
     }
 
     public CustomUserDetails() {}
