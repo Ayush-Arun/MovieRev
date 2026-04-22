@@ -19,11 +19,11 @@ const bmsUrl = (title, citySlug) =>
 
 // Format prices for display
 const TICKET_PRICES = {
-    '2D': { min: 150, max: 250 },
-    '3D': { min: 200, max: 350 },
-    'IMAX 3D': { min: 400, max: 700 },
-    '4DX': { min: 450, max: 750 },
-    'ICE': { min: 300, max: 500 },
+    '2D': { min: 250, max: 450 },
+    '3D': { min: 350, max: 550 },
+    'IMAX 3D': { min: 650, max: 1100 },
+    '4DX': { min: 600, max: 950 },
+    'ICE': { min: 800, max: 1400 },
 };
 
 const Showtimes = () => {
@@ -51,11 +51,11 @@ const Showtimes = () => {
     // Assign deterministic but "realistic-looking" show times per movie
     const getShowTimes = (movieIndex) => {
         const baseTimes = [
-            ['09:15', '12:30', '15:45', '19:00', '22:15'],
-            ['10:00', '13:15', '16:30', '20:00', '23:00'],
-            ['09:30', '12:45', '16:00', '19:30', '22:45'],
-            ['11:00', '14:30', '18:00', '21:30'],
-            ['10:30', '14:00', '17:30', '21:00'],
+            ['09:15 AM', '12:30 PM', '04:00 PM', '07:30 PM', '10:45 PM'],
+            ['10:00 AM', '01:15 PM', '04:45 PM', '08:00 PM', '11:15 PM'],
+            ['08:45 AM', '12:15 PM', '03:30 PM', '06:45 PM', '10:00 PM'],
+            ['11:30 AM', '03:15 PM', '06:30 PM', '09:45 PM'],
+            ['10:45 AM', '02:00 PM', '05:30 PM', '09:00 PM'],
         ];
         const times = baseTimes[movieIndex % baseTimes.length];
         // Show 3-4 times per theatre based on movie index
@@ -70,21 +70,43 @@ const Showtimes = () => {
         return ['2D'];
     };
 
-    const BANGALORE_THEATRES = [
-        'PVR: Orion Mall, Rajajinagar',
-        'PVR INOX: VR Bengaluru, Whitefield',
-        'Cinepolis: Nexus Shantiniketan',
-        'INOX: Garuda Mall, Magrath Road',
-        'PVR: Phoenix Marketcity, Mahadevapura',
-    ];
+    const getTheatresForCity = (cityName) => {
+        const theatreMaps = {
+            'Bangalore': [
+                "PVR Director's Cut: Rex Walk, Brigade Road",
+                "Cinepolis IMAX: Nexus Shantiniketan",
+                "INOX Megaplex: RMZ Galleria, Yelahanka",
+                "PVR Superplex: Nexus Mall, Koramangala",
+                "PVR: Phoenix Marketcity, Mahadevapura"
+            ],
+            'Mumbai': [
+                "PVR ICON: Palladium, Lower Parel",
+                "INOX: Insignia at Atria Mall, Worli",
+                "Cinepolis: Andheri West",
+                "PVR: Jio World Drive, BKC"
+            ],
+            'Delhi NCR': [
+                "PVR Director's Cut: Ambience Mall, Vasant Kunj",
+                "INOX: Nehru Place",
+                "Cinepolis IMAX: DLF Avenue, Saket",
+                "PVR: Logix City Centre, Noida"
+            ]
+        };
+        
+        return theatreMaps[cityName] || [
+            `PVR: Main City Mall, ${cityName}`,
+            `Cinepolis: Central, ${cityName}`,
+            `INOX: Hub Center, ${cityName}`
+        ];
+    };
 
-    const getTheatresForMovie = (movieIndex) => {
-        // Each movie plays at 2-3 theatres
+    const getTheatresForMovie = (movieIndex, cityName) => {
+        const cityTheatres = getTheatresForCity(cityName);
         const count = 2 + (movieIndex % 2);
-        const start = movieIndex % BANGALORE_THEATRES.length;
+        const start = movieIndex % cityTheatres.length;
         const theatres = [];
         for (let i = 0; i < count; i++) {
-            theatres.push(BANGALORE_THEATRES[(start + i) % BANGALORE_THEATRES.length]);
+            theatres.push(cityTheatres[(start + i) % cityTheatres.length]);
         }
         return theatres;
     };
@@ -157,7 +179,7 @@ const Showtimes = () => {
             ) : (
                 <div className="grid grid-cols-1 gap-10">
                     {movies.slice(0, 12).map((movie, idx) => {
-                        const theatres = getTheatresForMovie(idx);
+                        const theatres = getTheatresForMovie(idx, selectedCity.name);
                         const bmsLink = bmsUrl(movie.title, selectedCity.bmsSlug);
 
                         return (

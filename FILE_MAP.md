@@ -5,6 +5,7 @@ This document explains what each file in the repository is responsible for.
 ## Root-level files
 
 - `.vscode/settings.json` - Workspace-specific editor settings for this project.
+- `docker-compose.yml` - Orchestrates the Database, Backend API, and Frontend web-server for rapid production deployment.
 - `CINEVAULT_ARCHITECTURE_GUIDE.md` - High-level architecture overview of the full CineVault system.
 - `FILE_MAP.md` - Complete file-by-file responsibility map (this file).
 - `PROJECT_PLAN.md` - Project planning notes, milestones, and implementation direction.
@@ -16,6 +17,7 @@ This document explains what each file in the repository is responsible for.
 
 ## Backend: build/config/meta
 
+- `backend/Dockerfile` - Multi-stage build script binding Spring Boot with an Eclipse Temurin Runtime JVM.
 - `backend/.gitignore` - Ignore rules for backend artifacts (build output, generated files, etc.).
 - `backend/.idea/.gitignore` - IDE-specific ignore settings for backend IntelliJ project files.
 - `backend/.idea/compiler.xml` - IntelliJ compiler configuration for backend module.
@@ -51,15 +53,18 @@ This document explains what each file in the repository is responsible for.
 - `AdminController.java` - Admin-only API endpoints for privileged operations.
 - `AuthController.java` - Authentication APIs (register, login, refresh, auth-related responses).
 - `MovieController.java` - Movie listing/detail/search/filter APIs.
+- `NotificationController.java` - Fetches unread system notifications broadcasted to the user.
 - `PeopleController.java` - APIs for person/cast/crew related movie data.
 - `ReviewController.java` - Review CRUD/read APIs tied to users and movies.
 - `ShowtimeController.java` - APIs for showtime querying and management.
 - `TheatreController.java` - APIs for theatre listing and theatre-level data.
+- `UserController.java` - User profile, details API and setting mutation hooks.
 - `WatchlistController.java` - APIs for watchlist add/remove/fetch operations.
 
 ## Backend: DTOs (`backend/src/main/java/com/cinevault/dto`)
 
 - `AuthDtos.java` - Auth request/response DTOs used by authentication endpoints.
+- `UserDtos.java` - Response mapping records for User metadata pipelines.
 
 ### TMDB DTOs (`backend/src/main/java/com/cinevault/dto/tmdb`)
 
@@ -76,7 +81,9 @@ This document explains what each file in the repository is responsible for.
 - `Genre.java` - JPA entity for genre records.
 - `Language.java` - JPA entity for movie language records.
 - `Movie.java` - JPA entity for movies and their metadata/relationships.
+- `Notification.java` - JPA entity storing system global/local alerts for users.
 - `OttPlatform.java` - JPA entity for OTT/streaming platforms.
+- `OtpToken.java` - Short life cycle email verification token container.
 - `Person.java` - JPA entity for cast/crew/person records.
 - `RefreshToken.java` - JPA entity for refresh token persistence.
 - `Review.java` - JPA entity for user movie reviews.
@@ -89,7 +96,9 @@ This document explains what each file in the repository is responsible for.
 
 - `GenreRepository.java` - Data access interface for `Genre`.
 - `MovieRepository.java` - Data access interface and custom queries for `Movie`.
+- `NotificationRepository.java` - Data interface resolving notification fetches per user.
 - `OttPlatformRepository.java` - Data access interface for `OttPlatform`.
+- `OtpTokenRepository.java` - Token store access mechanism.
 - `RefreshTokenRepository.java` - Data access interface for `RefreshToken`.
 - `ReviewRepository.java` - Data access interface for `Review`.
 - `ShowtimeRepository.java` - Data access interface for `Showtime`.
@@ -105,10 +114,13 @@ This document explains what each file in the repository is responsible for.
 
 ## Backend: services (`backend/src/main/java/com/cinevault/service`)
 
-- `TmdbSyncService.java` - Sync/orchestration logic that fetches TMDB data and updates local records.
+- `EmailService.java` - Integration protocol with SMTP handlers to send OTP links and system alerts.
+- `TmdbSyncService.java` - Orchestration logic fetching TMDB data, building database schema states, and triggering System alerts.
 
 ## Frontend: build/config/meta
 
+- `frontend/Dockerfile` - Map Vite build static assets onto Alpine Nginx via staged deployment.
+- `frontend/nginx.conf` - Nginx proxy/routing logic for pushing fallback logic to index.html and proxying `/api` natively without CORS.
 - `frontend/.gitignore` - Ignore rules for frontend build/cache artifacts.
 - `frontend/README.md` - Frontend-specific setup, scripts, and local dev instructions.
 - `frontend/eslint.config.js` - ESLint rules and linting behavior for frontend code.
@@ -135,6 +147,7 @@ This document explains what each file in the repository is responsible for.
 
 - `frontend/src/api/axios.js` - Shared Axios client setup (base URL/interceptors/default headers).
 - `frontend/src/context/AuthContext.jsx` - Global authentication state/context provider.
+- `frontend/src/context/SidebarContext.jsx` - State engine resolving application-side navigation/slide-outs.
 
 ## Frontend: components (`frontend/src/components`)
 
@@ -150,6 +163,7 @@ This document explains what each file in the repository is responsible for.
 - `Home.jsx` - Landing/home page with featured and discoverable movie content.
 - `MovieDetail.jsx` - Detailed movie page (metadata, reviews, providers, etc.).
 - `Profile.jsx` - User profile/account page.
+- `Settings.jsx` - Premium settings terminal regulating user aesthetics.
 - `Showtimes.jsx` - Showtimes browsing page (city/theatre/time discovery).
 - `Watchlist.jsx` - User watchlist management page.
 

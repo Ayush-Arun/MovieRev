@@ -8,9 +8,10 @@ This document provides a detailed breakdown of the CineVault system, explaining 
 CineVault is a full-stack movie review and booking platform built with the **"Glitch Noir"** aesthetic. It prioritizes **high-integrity data**, ensuring that every movie, rating, and cast member displayed is accurate and sourced directly from the The Movie Database (TMDB).
 
 **Tech Stack:**
-- **Backend**: Spring Boot (Java 25), Spring Data JPA, Spring Security (JWT).
-- **Frontend**: React (Vite), Tailwind CSS, Framer Motion.
+- **Backend**: Spring Boot, Spring Data JPA, Spring Security (JWT).
+- **Frontend**: React (Vite), Tailwind CSS.
 - **Database**: PostgreSQL with custom triggers and full-text search.
+- **DevOps**: Docker Multi-Container Architecture (Nginx + Spring Boot + Postgres).
 
 ---
 
@@ -26,10 +27,9 @@ The heart of CineVault is the `TmdbSyncService`. This service handles the bridge
     - For every movie identified, the system makes three additional API calls:
         - `/movie/{id}`: Detailed metadata (synopsis, runtime, budget).
         - `/movie/{id}/credits`: To extract the top 10 actors and the Director.
-        - `/movie/{id}/images`: To fetch high-resolution posters.
-3.  **Accuracy Guarantee**:
-    - We **removed all mock/fake ratings**. The system now stores the exact `vote_average` from TMDB.
-    - **Transactional Integrity**: All sync operations are wrapped in `@Transactional` blocks to ensure that if a credit or genre fails, the movie isn't left in a partial state.
+        - `/movie/{id}/images`: To fetch high-resolution posters (fallbacks generated instantly).
+3.  **Global Notification Broadcast**:
+    - Immediately following a successful ingestion of a net-new movie, the backend fires a direct JDBC bulk insert into the `notifications` table, instantly alerting all registered users to the new content in their UI bell icon.
 
 ---
 
@@ -37,52 +37,32 @@ The heart of CineVault is the `TmdbSyncService`. This service handles the bridge
 We have refined the database from a "garbage-filled" sparsely populated state into a strictly normalized schema.
 
 ### Before vs. After:
-- **Old (Denormalized)**: Movie genres were stored as a simple comma-separated string like `"Action, Drama"`. This made it impossible to filter movies efficiently by genre.
-- **New (Normalized)**: movies are linked to a specific `genres` table via a `movie_genres` join table.
-    - This allows for SQL queries like: `SELECT * FROM movies JOIN movie_genres ON ... WHERE genre_id = 28`.
-    - It ensures that "Action" is the same entity across all movies.
+- **Old (Denormalized)**: Movie genres were stored as a simple comma-separated string.
+- **New (Normalized)**: movies are linked to a specific `genres` table via a `movie_genres` join table, allowing instantaneous relational filtering.
 
 ---
 
-## 🎟️ 4. Theater & Booking System
-CineVault features a realistic theater booking system focused on major Indian hubs.
-
-### Realistic Data Generation:
-- **Cities**: We focused on **Bangalore (Default)**, Mumbai, Delhi, and Hyderabad.
-- **Premium Theaters**: We inserted real-world venues like *PVR ICON Nexus Shantiniketan* and *AMB Cinemas*.
-- **Dynamic Showtimes**: Instead of static labels, we use a SQL generator that:
-    1.  Picks the **top 10 highest-rated movies** currently in our database.
-    2.  Assigns them **4 shows per day** (Morning, Matinee, Evening, Night).
-    3.  Calculates timings for the **next 3 days** dynamically from the current date.
-
-### How it works in the UI:
-1.  **City Selector**: The frontend fetches a distinct list of cities from the database.
-2.  **Filtering**: When you select "Bangalore", the backend runs a join query:
-    ```sql
-    SELECT s.*, t.name, m.title 
-    FROM showtimes s 
-    JOIN theatres t ON s.theatre_id = t.id 
-    JOIN movies m ON s.movie_id = m.id 
-    WHERE t.city = 'Bangalore';
-    ```
-3.  **Booking Validation**: A PostgreSQL trigger (`trg_check_available_seats`) ensures that you can never book more seats than are available in a theater screen.
+## 🎟️ 4. Watchlist Persistence 
+CineVault handles Watchlists efficiently using a dual-state resolution system:
+- **Guest State**: Users without an account receive a uniquely generated LocalStorage UUID, tied to the PostgreSQL `session_id`.
+- **Merge Resolve**: Upon Authentication, the `AuthController` hooks a merge phase where all session-tied watchlist entries are hard-mapped to the new authenticated `user_id`, clearing ghost states automatically so no data is lost during Sign-Up.
 
 ---
 
-## 🗣️ 5. How to Explain CineVault (Talking Points)
+## 🚢 5. Docker Production Architecture
+CineVault is completely containerized.
+1. **Frontend**: Standard Vite build, mapped to a hyper-lightweight Alpine `nginx` server. `nginx.conf` has been injected to properly proxy all `/api` calls down back to the Spring Service, while cleanly mapping React Router paths to `index.html`.
+2. **Backend**: Standard Multi-stage build via Maven and Eclipse Temurin JRE. Serves on port `5000`.
+3. **Database**: Direct PostgreSQL 15 boot that maps natively to the Java service through Docker's internal DNS (`cinevault-db`).
+
+---
+
+## 🗣️ 6. How to Explain CineVault (Talking Points)
 If you are explaining this project to a third party, here is how to frame it:
 
 1.  **Data Integrity First**: Highlight that unlike many movie apps that use "mock" data, CineVault has a self-healing sync engine that restores accuracy if any data is corrupted.
 2.  **Modern Aesthetics**: Mention the "Glitch Noir" design—it's not just a movie list; it's a visual experience with high-contrast elements and smooth transitions.
-3.  **Technical Depth**: Mention the **database triggers** and **Many-to-Many normalization**. This shows that the app isn't just a simple CRUD app, but a production-ready system.
-4.  **Automatic Ingestion**: Explain that the "Best of Decade" section isn't curated by hand—the backend "searched" TMDB for the best content and brought it in automatically.
-
----
-
-## 🛠️ 6. How to Run/Sync the Data
-If you ever need to reset or refresh the data:
-- **Reset Showtimes**: Run the script at `backend/db/populate_major_cities.sql`.
-- **Trigger Sync**: The sync starts automatically when the backend boots up (`TmdbStartupConfig.java`).
+3.  **Technical Depth**: Mention the **Postgres bulk JDBC injections**, and **Watchlist Ghosting resolution**. This shows that the app isn't just a simple CRUD app, but a production-ready system tackling real-world distributed state issues.
 
 ---
 

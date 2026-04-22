@@ -197,7 +197,7 @@ const MovieDetail = () => {
                                 <span className="material-symbols-outlined text-primary text-[16px]">play_circle</span>
                                 <h4 className="text-[10px] font-headline uppercase tracking-widest text-primary">Streaming On</h4>
                             </div>
-                            <div className="flex flex-wrap gap-5 items-center">
+                            <div className="flex flex-wrap gap-5 items-start">
                                 {(movie.ottPlatforms || movie.ott_platforms).map(platform => {
                                     const pName = platform.name?.toLowerCase() || '';
                                     const titleEncoded = encodeURIComponent(movie.title);
@@ -220,14 +220,14 @@ const MovieDetail = () => {
                                             target="_blank" 
                                             rel="noopener noreferrer" 
                                             key={platform.id || platform.tmdb_provider_id || pName} 
-                                            className="flex flex-col items-center gap-2 group"
+                                            className="flex flex-col items-center gap-2 group w-16"
                                             title={`Watch on ${platform.name}`}
                                         >
                                             {logoSrc ? (
                                                 <img 
                                                     src={logoSrc}
                                                     alt={platform.name} 
-                                                    className="w-12 h-12 rounded-xl group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(202,253,0,0.4)] transition-all shadow-lg cursor-pointer object-contain bg-white/5"
+                                                    className="w-12 h-12 rounded-xl group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(202,253,0,0.4)] transition-all shadow-lg cursor-pointer object-contain bg-white/5 flex-shrink-0"
                                                     onError={(e) => {
                                                         e.target.style.display = 'none';
                                                         e.target.nextSibling.style.display = 'flex';
@@ -235,12 +235,12 @@ const MovieDetail = () => {
                                                 />
                                             ) : null}
                                             <div 
-                                                className="w-12 h-12 rounded-xl bg-white/10 items-center justify-center text-white/60 text-[9px] font-headline uppercase text-center p-1 leading-tight cursor-pointer group-hover:bg-primary/20 transition-colors"
+                                                className="w-12 h-12 rounded-xl bg-white/10 items-center justify-center text-white/60 text-[9px] font-headline uppercase text-center p-1 leading-tight cursor-pointer group-hover:bg-primary/20 transition-colors flex-shrink-0"
                                                 style={{ display: logoSrc ? 'none' : 'flex' }}
                                             >
                                                 {platform.name?.substring(0, 6)}
                                             </div>
-                                            <span className="text-[9px] text-white/40 uppercase font-headline tracking-wider group-hover:text-primary transition-colors text-center max-w-[60px] leading-tight">{platform.name}</span>
+                                            <span className="text-[8px] text-white/40 uppercase font-headline tracking-wider group-hover:text-primary transition-colors text-center w-full leading-tight">{platform.name}</span>
                                         </a>
                                     );
                                 })}

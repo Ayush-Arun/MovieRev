@@ -196,6 +196,7 @@ public class TmdbSyncService {
             }
             
             // Save or Update Movie
+            boolean isNewMovie = movieRepository.findByTmdbId(tmdbId).isEmpty();
             Movie movie = movieRepository.findByTmdbId(tmdbId).orElse(new Movie());
             movie.setTmdbId(movieDto.getId());
             movie.setTitle(movieDto.getTitle());
@@ -239,7 +240,23 @@ public class TmdbSyncService {
 
             // Re-enforce TMDB rating as source of truth after all sub-syncs
             savedMovie.setAggregateRating(movieDto.getVoteAverage());
-            return movieRepository.save(savedMovie);
+            Movie finalSavedMovie = movieRepository.save(savedMovie);
+
+            // Broadcast Notification if it's a completely new ingress
+            if (isNewMovie) {
+                try {
+                    jdbcTemplate.update(
+                        "INSERT INTO notifications (user_id, message, is_read, created_at) " +
+                        "SELECT id, ?, false, CURRENT_TIMESTAMP FROM users",
+                        "New Arrival: " + finalSavedMovie.getTitle() + " has entered the vault."
+                    );
+                    System.out.println("Broadcasted new arrival notification for: " + finalSavedMovie.getTitle());
+                } catch (Exception e) {
+                    System.err.println("Failed to broadcast notification: " + e.getMessage());
+                }
+            }
+
+            return finalSavedMovie;
 
         } catch (Exception e) {
             System.err.println("Failed to sync movie " + tmdbId + ": " + e.getMessage());

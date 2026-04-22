@@ -1,35 +1,38 @@
-# CineVault
+# CineVault <span style="color:#ff706f">_</span>
 
-A premium full-stack Bollywood and South Indian Movie review & discovery platform built with React, Spring Boot, and PostgreSQL. 
+A premium full-stack movie discovery platform featuring a stark, high-fidelity **"Glitch Noir"** aesthetic. Engineered with React, Spring Boot, and PostgreSQL.
 
-The application utilizes native PostgreSQL capabilities including pure native functions, recursive CTE computations (for co-star graphs), and 7 business-logic triggers (controlling ratings, constraints, and dynamic fields autonomously).
+CineVault autonomously scrapes the TMDB API to ingest global cinema metadata, seamlessly manages cross-platform Watchlists (merging guest tokens to authenticated state automatically), and pushes real-time global notifications the moment restricted metadata arrives in the vault.
 
-## Architecture
+## Architecture & Data Pipeline
 
-*   **Frontend**: React + Vite + Tailwind CSS. Session tracked automatically via HTTP JWT Bearer interceptors & localStorage `UUID` for guest-persistence merging.
-*   **Backend**: Java 17 + Spring Boot 3. Stateless session using JWTs, managed via Spring Security.
-*   **Database**: PostgreSQL 15+. 17 tightly mapped logic tables enforcing strict constraints.
-*   **Remote Data**: Powered by the TMDB API.
+*   **Frontend**: React + Vite + Tailwind CSS. Interface styled in raw monochrome and brutalist typography. Sessions are tracked via HTTP JWT Bearer interceptors, with `UUID`-based localStorage for ghost/guest cart persistence.
+*   **Backend**: Java 17 + Spring Boot 3. Stateless REST API protected by Spring Security (JWT). Houses the `TmdbSyncService` which autonomously hydrates the DB with rich API metadata, automatically linking OTT logo streams via deep indexing.
+*   **Database**: PostgreSQL 15+. 17 tightly mapped logic tables enforcing strict constraints. Pushes direct JDBC bulk alerts to user tables upon ingress of new movies.
+*   **Remote Data**: Powered by the TMDB API. Includes robust content-filtering arrays to block inappropriate media before it touches the schema.
 
-## Starting Instructions
+## Starting the Vault (Docker Compose)
 
-### 1. Database Setup
-1. Open pgAdmin or `psql` and create a blank database: `CREATE DATABASE cinevault;`
-2. Run `backend/db/schema.sql` against the database to generate all tables and triggers.
-3. Run `backend/db/views.sql` to generate all views and custom functions.
+The easiest and only supported production way to boot the entire CineVault infrastructure (Database, Backend API, Frontend Server) is using Docker Compose.
 
-### 2. Environment Configurations
-Please refer directly to `instruction.md` for detailed instructions on where to precisely put your TMDB API keys, database URL, and JWT passwords!
+### 1. Configure the Environment
+Ensure your configurations in `backend/src/main/resources/application.yml` have your **TMDB API Key** injected. Default database routing assumes `localhost:5432`, but Docker maps everything natively.
 
-### 3. Backend Start
-1. Ensure Java 17+ and Maven are installed.
-2. From the `backend` folder, run `./mvnw spring-boot:run` or invoke it directly from your IDE.
-
-### 4. Frontend Start
-1. Ensure Node.js is installed.
-2. From the `frontend` folder, run the following:
+### 2. Ignite the Containers
+From the root directory of the application:
 ```bash
-npm install
-npm run dev
+docker-compose --build up -d
 ```
-3. Open `http://localhost:5173` to view CineVault.
+
+### 3. Access
+* The **Frontend** runs on Nginx and is available at `http://localhost`.
+* The **Backend** API proxy is mapped on `http://localhost:5000/api`.
+* The **Database** will be auto-instantiated based on the `docker-compose.yml` mounts.
+
+> Note: To tear down the system, use `docker-compose down`.
+
+### Legacy Raw Boot
+*(If you do not wish to use Docker)*
+1. Start postgres manually on `5432` with a database named `cinevault`. Apply `backend/db/schema.sql`.
+2. Enter `/backend` and run `./mvnw spring-boot:run`.
+3. Enter `/frontend`, run `npm install` and `npm run dev`.
