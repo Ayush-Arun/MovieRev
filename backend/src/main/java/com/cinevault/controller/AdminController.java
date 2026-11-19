@@ -21,15 +21,39 @@ public class AdminController {
     @Autowired
     private UserRepository userRepository;
 
+    @PostMapping("/sync/current-year")
+    public ResponseEntity<?> syncCurrentYear() {
+        new Thread(() -> tmdbSyncService.syncCurrentYearMovies()).start();
+        return ResponseEntity.ok("Current year (2026) movie sync started in background.");
+    }
+
+    @PostMapping("/sync/now-playing")
+    public ResponseEntity<?> syncNowPlaying() {
+        new Thread(() -> tmdbSyncService.syncNowPlayingMovies()).start();
+        return ResponseEntity.ok("Now playing movie sync started in background.");
+    }
+
+    @PostMapping("/sync/hollywood")
+    public ResponseEntity<?> syncHollywood() {
+        new Thread(() -> tmdbSyncService.syncHollywoodMovies()).start();
+        return ResponseEntity.ok("Hollywood sync started in background.");
+    }
+
+    @PostMapping("/sync/decade")
+    public ResponseEntity<?> syncDecade() {
+        new Thread(() -> tmdbSyncService.syncDecadeMovies()).start();
+        return ResponseEntity.ok("Decade movie sync started in background.");
+    }
+
     @PostMapping("/sync/bollywood")
     public ResponseEntity<?> syncBollywood() {
-        tmdbSyncService.syncBollywoodMovies();
+        new Thread(() -> tmdbSyncService.syncBollywoodMovies()).start();
         return ResponseEntity.ok("Bollywood sync triggered.");
     }
 
     @PostMapping("/sync/south-indian")
     public ResponseEntity<?> syncSouthIndian() {
-        tmdbSyncService.syncSouthIndianMovies();
+        new Thread(() -> tmdbSyncService.syncSouthIndianMovies()).start();
         return ResponseEntity.ok("South Indian sync triggered.");
     }
 

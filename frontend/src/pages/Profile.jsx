@@ -12,7 +12,7 @@ const Profile = () => {
             totalReviews: 5, 
             avgRating: 8.2, 
             watchlistCount: 12,
-            joinDate: '2026-04-18' 
+            joinDate: user?.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2026-04-18' 
         }), 800);
     }, []);
 

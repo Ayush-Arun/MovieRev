@@ -1,0 +1,21 @@
+# IDE & Editor files
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+backend/target/
+target/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# OS generated
+Thumbs.db
+Desktop.ini
+.DS_Store

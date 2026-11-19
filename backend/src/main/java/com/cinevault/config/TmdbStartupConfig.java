@@ -2,6 +2,7 @@ package com.cinevault.config;
 
 import com.cinevault.service.TmdbSyncService;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -9,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class TmdbStartupConfig {
 
     @Bean
+    @ConditionalOnProperty(name = "app.tmdb.sync-on-startup", havingValue = "true", matchIfMissing = true)
     public CommandLineRunner runSyncOnStartup(TmdbSyncService tmdbSyncService) {
         return args -> {
             System.out.println("======================================================");
@@ -20,7 +22,8 @@ public class TmdbStartupConfig {
                 tmdbSyncService.syncSouthIndianMovies();
                 tmdbSyncService.syncDecadeMovies();
                 tmdbSyncService.syncNowPlayingMovies();
-                System.out.println("TMDB SYNC SUCCESSFUL! DATABASE POPULATED.");;
+                tmdbSyncService.syncCurrentYearMovies();
+                System.out.println("TMDB SYNC SUCCESSFUL! DATABASE POPULATED.");
             } catch (Exception e) {
                 System.err.println("TMDB SYNC FAILED: " + e.getMessage());
             }

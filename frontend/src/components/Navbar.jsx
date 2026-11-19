@@ -133,6 +133,11 @@ const Navbar = ({ onOpenAuth }) => {
                             <Link to="/profile" className="flex items-center gap-2 px-3 py-2 font-headline text-[10px] uppercase tracking-widest text-white/50 hover:text-[#f3ffca] hover:bg-white/4 transition-colors">
                                 <span className="material-symbols-outlined text-[13px]">person</span> Profile
                             </Link>
+                            {isAdmin && (
+                                <Link to="/admin" className="flex items-center gap-2 px-3 py-2 font-headline text-[10px] uppercase tracking-widest text-[#ff706f] hover:bg-[#ff706f]/10 transition-colors">
+                                    <span className="material-symbols-outlined text-[13px]">admin_panel_settings</span> Admin Panel
+                                </Link>
+                            )}
                             <Link to="/settings" className="flex items-center gap-2 px-3 py-2 font-headline text-[10px] uppercase tracking-widest text-white/50 hover:text-[#f3ffca] hover:bg-white/4 transition-colors">
                                 <span className="material-symbols-outlined text-[13px]">settings</span> Settings
                             </Link>

@@ -105,7 +105,11 @@ public class MovieController {
     public ResponseEntity<List<Movie>> getNowPlaying() {
         java.time.LocalDate start = java.time.LocalDate.now().minusMonths(1);
         java.time.LocalDate end = java.time.LocalDate.now().plusMonths(1);
-        return ResponseEntity.ok(movieRepository.findNowPlaying(start, end));
+        List<Movie> results = movieRepository.findNowPlaying(start, end);
+        if (results == null || results.isEmpty()) {
+            results = movieRepository.findNowPlaying(java.time.LocalDate.now().minusMonths(6), java.time.LocalDate.now().plusMonths(3));
+        }
+        return ResponseEntity.ok(results);
     }
 
     @GetMapping("/top-rated")

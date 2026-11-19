@@ -40,9 +40,13 @@ const Admin = () => {
                 {status && <div className="mb-4 p-4 bg-slate-800 border border-cine-gold text-cine-gold rounded-lg">{status}</div>}
                 
                 <div className="flex flex-col gap-4">
-                    <div className="flex gap-4">
-                        <button onClick={() => triggerSync('bollywood')} className="px-5 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition">Sync Bollywood Top 50</button>
-                        <button onClick={() => triggerSync('south-indian')} className="px-5 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition">Sync South Indian</button>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <button onClick={() => triggerSync('current-year')} className="px-4 py-3 bg-cine-gold hover:bg-yellow-500 rounded-lg text-black font-bold transition">Sync 2026 / Current Year</button>
+                        <button onClick={() => triggerSync('now-playing')} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition">Sync Now Playing</button>
+                        <button onClick={() => triggerSync('hollywood')} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition">Sync Hollywood</button>
+                        <button onClick={() => triggerSync('bollywood')} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition">Sync Bollywood</button>
+                        <button onClick={() => triggerSync('south-indian')} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition">Sync South Indian</button>
+                        <button onClick={() => triggerSync('decade')} className="px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-white transition">Sync Decade</button>
                     </div>
                     
                     <div className="flex gap-4 mt-2">

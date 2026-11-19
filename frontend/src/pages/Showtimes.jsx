@@ -64,7 +64,7 @@ const Showtimes = () => {
 
     const getFormatsForMovie = (movie, theatreIndex) => {
         // Newer/popular movies get IMAX + standard formats
-        const releaseYear = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : 2024;
+        const releaseYear = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : new Date().getFullYear();
         if (releaseYear >= 2024 && theatreIndex === 0) return ['IMAX 3D', '2D'];
         if (theatreIndex === 1) return ['3D', '2D'];
         return ['2D'];

@@ -80,17 +80,51 @@ public class TmdbSyncService {
 
     public void syncDecadeMovies() {
         int currentYear = LocalDate.now().getYear();
-        for (int year = currentYear - 10; year < currentYear; year++) {
+        for (int year = currentYear - 10; year <= currentYear; year++) {
             System.out.println("Syncing top movies for year: " + year);
-            String url = baseUrl + "/discover/movie?api_key=" + apiKey + "&primary_release_year=" + year + "&sort_by=vote_average.desc&vote_count.gte=500&include_adult=false";
+            int minVotes = (year == currentYear) ? 30 : 500;
+            String sortBy = (year == currentYear) ? "popularity.desc" : "vote_average.desc";
+            String url = baseUrl + "/discover/movie?api_key=" + apiKey + "&primary_release_year=" + year + "&sort_by=" + sortBy + "&vote_count.gte=" + minVotes + "&include_adult=false";
             fetchAndSaveMovies(url);
         }
     }
 
+    public void syncCurrentYearMovies() {
+        int currentYear = LocalDate.now().getYear();
+        System.out.println(">>> SYNC: Ingesting " + currentYear + " Movies from TMDB...");
+        
+        // 1. Top Popular movies released in current year
+        for (int page = 1; page <= 2; page++) {
+            String popularUrl = baseUrl + "/discover/movie?api_key=" + apiKey 
+                + "&primary_release_year=" + currentYear 
+                + "&sort_by=popularity.desc&include_adult=false&page=" + page;
+            fetchAndSaveMovies(popularUrl);
+        }
+
+        // 2. High rated movies of current year with low vote threshold for recent releases
+        String topRatedUrl = baseUrl + "/discover/movie?api_key=" + apiKey 
+            + "&primary_release_year=" + currentYear 
+            + "&sort_by=vote_average.desc&vote_count.gte=30&include_adult=false";
+        fetchAndSaveMovies(topRatedUrl);
+
+        // 3. Indian regional current year releases (Hindi, Tamil, Telugu, Malayalam, Kannada)
+        String[] languages = {"hi", "ta", "te", "ml", "kn"};
+        for (String lang : languages) {
+            String regionalUrl = baseUrl + "/discover/movie?api_key=" + apiKey 
+                + "&primary_release_year=" + currentYear 
+                + "&with_original_language=" + lang 
+                + "&region=IN&sort_by=popularity.desc&include_adult=false";
+            fetchAndSaveMovies(regionalUrl);
+        }
+        System.out.println(">>> SYNC: Finished ingesting " + currentYear + " Movies.");
+    }
+
     public void syncNowPlayingMovies() {
         System.out.println("Syncing NOW PLAYING movies from TMDB...");
-        String url = baseUrl + "/movie/now_playing?api_key=" + apiKey + "&region=IN&language=en-US";
-        fetchAndSaveMovies(url);
+        // 1. Global theatrical releases
+        fetchAndSaveMovies(baseUrl + "/movie/now_playing?api_key=" + apiKey + "&language=en-US");
+        // 2. Indian theatrical releases
+        fetchAndSaveMovies(baseUrl + "/movie/now_playing?api_key=" + apiKey + "&region=IN&language=en-US");
     }
 
     public void syncTopRatedMovies() {
@@ -154,15 +188,19 @@ public class TmdbSyncService {
             throw new IllegalStateException("TMDB API Key is not configured.");
         }
         
-        ResponseEntity<TmdbResponse<TmdbMovieDto>> response = restTemplate.exchange(
-            url, HttpMethod.GET, null, new ParameterizedTypeReference<TmdbResponse<TmdbMovieDto>>() {}
-        );
-        
-        if (response.getBody() != null && response.getBody().getResults() != null) {
-            List<TmdbMovieDto> movies = response.getBody().getResults();
-            for (TmdbMovieDto dto : movies) {
-                syncMovieDetails(dto.getId());
+        try {
+            ResponseEntity<TmdbResponse<TmdbMovieDto>> response = restTemplate.exchange(
+                url, HttpMethod.GET, null, new ParameterizedTypeReference<TmdbResponse<TmdbMovieDto>>() {}
+            );
+            
+            if (response.getBody() != null && response.getBody().getResults() != null) {
+                List<TmdbMovieDto> movies = response.getBody().getResults();
+                for (TmdbMovieDto dto : movies) {
+                    syncMovieDetails(dto.getId());
+                }
             }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch movies from URL [" + url + "]: " + e.getMessage());
         }
     }
 
@@ -444,7 +482,8 @@ public class TmdbSyncService {
         if (apiKey == null || apiKey.isEmpty()) return List.of();
         java.util.ArrayList<Movie> synced = new java.util.ArrayList<>();
         try {
-            String url = baseUrl + "/search/movie?api_key=" + apiKey + "&query=" + query + "&include_adult=false";
+            String encodedQuery = java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
+            String url = baseUrl + "/search/movie?api_key=" + apiKey + "&query=" + encodedQuery + "&include_adult=false";
             ResponseEntity<TmdbResponse<TmdbMovieDto>> response = restTemplate.exchange(
                 url, HttpMethod.GET, null, new ParameterizedTypeReference<TmdbResponse<TmdbMovieDto>>() {}
             );
